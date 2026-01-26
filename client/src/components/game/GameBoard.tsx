@@ -2,40 +2,54 @@ import React, { useEffect } from 'react';
 import { useGameStore } from '@/store/game-store';
 import { Card, EmptyPile } from './Card';
 import { Button } from '@/components/ui/button';
-import { Card as CardType } from '@/lib/game-engine';
+import type { Card as CardType } from '@/types/game';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const GameBoard = () => {
   const store = useGameStore();
   const { 
-    tableau, foundations, deck, hand, 
-    selectedCard, selectCard, moveCard, drawCard,
-    score, moves, startGame, reset
+    state, selectedCard, selectCard, moveCard, drawCard,
+    startSoloGame, reset, isLoading, error
   } = store;
 
   useEffect(() => {
-    startGame();
+    if (!state) {
+      startSoloGame();
+    }
   }, []);
 
-  const handleCardClick = (card: CardType, location: { type: 'tableau' | 'foundation' | 'hand', index: number }) => {
+  if (!state) {
+    return (
+      <div className="flex items-center justify-center h-full w-full bg-[#1a3c34] text-white">
+        <div className="text-center space-y-4">
+          <div className="text-xl">Loading game...</div>
+          {error && <div className="text-red-400">{error}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  const { tableau, foundations, deck, hand, score, moves, isWon } = state;
+
+  const handleCardClick = async (card: CardType, location: { type: 'tableau' | 'foundation' | 'hand', index: number }) => {
     if (selectedCard) {
-      if (selectedCard.card.id === card.id) {
-        selectCard(card, location);
+      if (selectedCard.cardId === card.id) {
+        selectCard(card.id, location);
       } else {
-        const success = moveCard(selectedCard.location, location);
+        const success = await moveCard(selectedCard.location, location, selectedCard.cardId);
         if (!success) {
-          selectCard(card, location);
+          selectCard(card.id, location);
         }
       }
     } else {
-      selectCard(card, location);
+      selectCard(card.id, location);
     }
   };
 
-  const handleEmptyClick = (location: { type: 'tableau' | 'foundation', index: number }) => {
+  const handleEmptyClick = async (location: { type: 'tableau' | 'foundation', index: number }) => {
     if (selectedCard) {
-      moveCard(selectedCard.location, location);
+      await moveCard(selectedCard.location, location, selectedCard.cardId);
     }
   };
 
@@ -72,7 +86,7 @@ export const GameBoard = () => {
                 {foundations[0].length === 0 ? (
                   <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 0 })} isHighlighted={selectedCard ? selectedCard.location.type !== 'foundation' : false} className="w-16 h-24 md:w-24 md:h-36" />
                 ) : (
-                  <Card card={foundations[0][foundations[0].length - 1]} onClick={() => handleCardClick(foundations[0][foundations[0].length - 1], { type: 'foundation', index: 0 })} isSelected={selectedCard?.card.id === foundations[0][foundations[0].length - 1].id} className="w-16 h-24 md:w-24 md:h-36" />
+                  <Card card={foundations[0][foundations[0].length - 1]} onClick={() => handleCardClick(foundations[0][foundations[0].length - 1], { type: 'foundation', index: 0 })} isSelected={selectedCard?.cardId === foundations[0][foundations[0].length - 1].id} className="w-16 h-24 md:w-24 md:h-36" />
                 )}
              </div>
           </div>
@@ -86,7 +100,7 @@ export const GameBoard = () => {
                   <div className="relative">
                     {tableau[0].map((card, idx) => (
                       <div key={card.id} style={{ position: 'absolute', top: idx * 20, zIndex: idx }} className="left-1/2 -translate-x-1/2">
-                         <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 0 })} isSelected={selectedCard?.card.id === card.id} className="w-16 h-24 md:w-24 md:h-36" />
+                         <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 0 })} isSelected={selectedCard?.cardId === card.id} className="w-16 h-24 md:w-24 md:h-36" />
                       </div>
                     ))}
                     {/* Placeholder to reserve space if needed, though absolute positioning handles the stack */}
@@ -102,7 +116,7 @@ export const GameBoard = () => {
                 {foundations[1].length === 0 ? (
                   <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 1 })} isHighlighted={selectedCard ? selectedCard.location.type !== 'foundation' : false} className="w-16 h-24 md:w-24 md:h-36" />
                 ) : (
-                  <Card card={foundations[1][foundations[1].length - 1]} onClick={() => handleCardClick(foundations[1][foundations[1].length - 1], { type: 'foundation', index: 1 })} isSelected={selectedCard?.card.id === foundations[1][foundations[1].length - 1].id} className="w-16 h-24 md:w-24 md:h-36" />
+                  <Card card={foundations[1][foundations[1].length - 1]} onClick={() => handleCardClick(foundations[1][foundations[1].length - 1], { type: 'foundation', index: 1 })} isSelected={selectedCard?.cardId === foundations[1][foundations[1].length - 1].id} className="w-16 h-24 md:w-24 md:h-36" />
                 )}
              </div>
           </div>
@@ -118,7 +132,7 @@ export const GameBoard = () => {
                   <div className="relative">
                     {tableau[1].map((card, idx) => (
                       <div key={card.id} style={{ position: 'absolute', top: idx * 20, zIndex: idx }} className="left-1/2 -translate-x-1/2">
-                         <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 1 })} isSelected={selectedCard?.card.id === card.id} className="w-16 h-24 md:w-24 md:h-36" />
+                         <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 1 })} isSelected={selectedCard?.cardId === card.id} className="w-16 h-24 md:w-24 md:h-36" />
                       </div>
                     ))}
                     <div className="w-16 h-24 md:w-24 md:h-36 opacity-0 pointer-events-none" />
@@ -152,7 +166,7 @@ export const GameBoard = () => {
                   <div className="relative">
                     {tableau[2].map((card, idx) => (
                       <div key={card.id} style={{ position: 'absolute', top: idx * 20, zIndex: idx }} className="left-1/2 -translate-x-1/2">
-                         <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 2 })} isSelected={selectedCard?.card.id === card.id} className="w-16 h-24 md:w-24 md:h-36" />
+                         <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 2 })} isSelected={selectedCard?.cardId === card.id} className="w-16 h-24 md:w-24 md:h-36" />
                       </div>
                     ))}
                      <div className="w-16 h-24 md:w-24 md:h-36 opacity-0 pointer-events-none" />
@@ -169,7 +183,7 @@ export const GameBoard = () => {
                 {foundations[2].length === 0 ? (
                   <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 2 })} isHighlighted={selectedCard ? selectedCard.location.type !== 'foundation' : false} className="w-16 h-24 md:w-24 md:h-36" />
                 ) : (
-                  <Card card={foundations[2][foundations[2].length - 1]} onClick={() => handleCardClick(foundations[2][foundations[2].length - 1], { type: 'foundation', index: 2 })} isSelected={selectedCard?.card.id === foundations[2][foundations[2].length - 1].id} className="w-16 h-24 md:w-24 md:h-36" />
+                  <Card card={foundations[2][foundations[2].length - 1]} onClick={() => handleCardClick(foundations[2][foundations[2].length - 1], { type: 'foundation', index: 2 })} isSelected={selectedCard?.cardId === foundations[2][foundations[2].length - 1].id} className="w-16 h-24 md:w-24 md:h-36" />
                 )}
              </div>
           </div>
@@ -183,7 +197,7 @@ export const GameBoard = () => {
                   <div className="relative">
                     {tableau[3].map((card, idx) => (
                       <div key={card.id} style={{ position: 'absolute', top: idx * 20, zIndex: idx }} className="left-1/2 -translate-x-1/2">
-                         <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 3 })} isSelected={selectedCard?.card.id === card.id} className="w-16 h-24 md:w-24 md:h-36" />
+                         <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 3 })} isSelected={selectedCard?.cardId === card.id} className="w-16 h-24 md:w-24 md:h-36" />
                       </div>
                     ))}
                     <div className="w-16 h-24 md:w-24 md:h-36 opacity-0 pointer-events-none" />
@@ -198,7 +212,7 @@ export const GameBoard = () => {
                 {foundations[3].length === 0 ? (
                   <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 3 })} isHighlighted={selectedCard ? selectedCard.location.type !== 'foundation' : false} className="w-16 h-24 md:w-24 md:h-36" />
                 ) : (
-                  <Card card={foundations[3][foundations[3].length - 1]} onClick={() => handleCardClick(foundations[3][foundations[3].length - 1], { type: 'foundation', index: 3 })} isSelected={selectedCard?.card.id === foundations[3][foundations[3].length - 1].id} className="w-16 h-24 md:w-24 md:h-36" />
+                  <Card card={foundations[3][foundations[3].length - 1]} onClick={() => handleCardClick(foundations[3][foundations[3].length - 1], { type: 'foundation', index: 3 })} isSelected={selectedCard?.cardId === foundations[3][foundations[3].length - 1].id} className="w-16 h-24 md:w-24 md:h-36" />
                 )}
              </div>
           </div>
@@ -222,7 +236,7 @@ export const GameBoard = () => {
               <Card 
                 card={card} 
                 onClick={() => handleCardClick(card, { type: 'hand', index: 0 })}
-                isSelected={selectedCard?.card.id === card.id}
+                isSelected={selectedCard?.cardId === card.id}
                 className="w-20 h-28 md:w-24 md:h-36 shadow-2xl"
               />
             </motion.div>
@@ -232,7 +246,7 @@ export const GameBoard = () => {
       </div>
       
       {/* Won Overlay */}
-      {store.isWon && (
+      {isWon && (
         <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm touch-none">
           <div className="text-center space-y-4 animate-in zoom-in duration-300 p-4">
             <h1 className="text-6xl font-serif text-gold mb-2">Victory!</h1>
