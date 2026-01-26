@@ -159,14 +159,17 @@ export const useGameStore = create<LocalGameState>((set, get) => ({
     if (!state || isAITurnInProgress) return false;
     if (state.players[state.currentPlayerIndex].isAI) return false;
 
+    console.log('moveCard called:', { source, destination, cardId });
+
     const action: MoveAction = {
       type: 'move_card',
-      from: { type: source.type as 'hand' | 'tableau', index: source.index },
+      from: { type: source.type as 'hand' | 'tableau' | 'foundation', index: source.index },
       to: { type: destination.type as 'tableau' | 'foundation', index: destination.index },
       cardId,
     };
 
     const result = GameEngine.applyMove(state, action);
+    console.log('applyMove result:', result.valid, result.error);
     if (result.valid) {
       const newHistory = [...turnHistory, JSON.parse(JSON.stringify(state))];
       set({ state: result.state, selectedCard: null, turnHistory: newHistory });

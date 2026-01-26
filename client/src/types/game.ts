@@ -37,7 +37,7 @@ export interface GameState {
 
 export interface MoveAction {
   type: 'draw' | 'move_card' | 'end_turn';
-  from?: { type: 'hand' | 'tableau', index: number };
+  from?: { type: 'hand' | 'tableau' | 'foundation', index: number };
   to?: { type: 'tableau' | 'foundation', index: number };
   cardId?: string;
 }

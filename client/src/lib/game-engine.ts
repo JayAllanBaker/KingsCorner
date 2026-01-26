@@ -37,7 +37,7 @@ export interface GameState {
 
 export interface MoveAction {
   type: 'draw' | 'move_card' | 'end_turn';
-  from?: { type: 'hand' | 'tableau', index: number };
+  from?: { type: 'hand' | 'tableau' | 'foundation', index: number };
   to?: { type: 'tableau' | 'foundation', index: number };
   cardId?: string;
 }
@@ -236,11 +236,18 @@ export class GameEngine {
         return { valid: false, state, error: 'Invalid move parameters' };
       }
 
+      // Can only move TO tableau or foundation, not hand
+      if (to.type !== 'tableau' && to.type !== 'foundation') {
+        return { valid: false, state, error: 'Invalid destination' };
+      }
+
       let sourceCards: Card[];
       if (from.type === 'hand') {
         sourceCards = currentPlayer.hand;
-      } else {
+      } else if (from.type === 'tableau') {
         sourceCards = newState.tableau[from.index];
+      } else {
+        sourceCards = newState.foundations[from.index];
       }
 
       const cardIndex = sourceCards.findIndex(c => c.id === cardId);
@@ -257,10 +264,12 @@ export class GameEngine {
         destPile = newState.foundations[to.index];
         const topCard = destPile[destPile.length - 1];
         isValidMove = this.isValidFoundationMove(card, topCard);
+        console.log('Foundation move check:', card.rank, card.suit, '->', topCard?.rank, topCard?.suit, 'valid:', isValidMove);
       } else {
         destPile = newState.tableau[to.index];
         const topCard = destPile[destPile.length - 1];
         isValidMove = this.isValidTableauMove(card, topCard);
+        console.log('Tableau move check:', card.rank, card.suit, '->', topCard?.rank, topCard?.suit, 'valid:', isValidMove);
       }
 
       if (!isValidMove) {
