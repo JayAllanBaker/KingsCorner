@@ -108,13 +108,17 @@ export const GameBoard = () => {
   };
 
   return (
-    <div className="flex flex-col h-full w-full relative select-none touch-pan-x touch-pan-y-none overscroll-none bg-gradient-to-b from-[#1a3c34] to-[#0f2620]">
+    <div 
+      className="flex flex-col h-full w-full relative select-none touch-pan-x touch-pan-y-none overscroll-none bg-gradient-to-b from-[#1a3c34] to-[#0f2620]"
+      role="application"
+      aria-label="Kings Corner card game"
+    >
       {/* Header with turn info */}
-      <div className="flex justify-between items-center px-4 py-2 pt-14 text-white/80 text-sm font-mono bg-black/30 backdrop-blur-sm border-b border-white/5 shrink-0 z-20">
-        <div className="flex flex-col">
+      <header className="flex justify-between items-center px-4 py-2 pt-14 text-white text-sm font-mono bg-black/30 backdrop-blur-sm border-b border-white/10 shrink-0 z-20">
+        <div className="flex flex-col" role="status" aria-live="polite">
           <div className="flex gap-3 items-center">
             <span className="text-amber-400 font-bold">Round {round}</span>
-            <span className="text-white/50">•</span>
+            <span className="text-white/60" aria-hidden="true">•</span>
             <span className={cn(
               "font-bold",
               isMyTurn ? "text-emerald-400" : "text-orange-400"
@@ -122,34 +126,43 @@ export const GameBoard = () => {
               {currentPlayer.name}'s Turn
             </span>
           </div>
-          <div className="flex gap-3 text-xs text-white/50">
+          <div className="flex gap-3 text-xs text-white/70">
             <span>Your Cards: {localPlayerHand.length}</span>
-            {opponents.map((opp, idx) => (
+            {opponents.map((opp) => (
               <span key={opp.id}>
-                <span className="mx-1">•</span>
+                <span className="mx-1" aria-hidden="true">•</span>
                 {opp.name}: {opp.hand.length}
               </span>
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <nav className="flex items-center gap-2" aria-label="Game controls">
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={toggleMoveHints} 
+            onClick={toggleMoveHints}
+            aria-pressed={showMoveHints}
+            aria-label={showMoveHints ? "Turn off move hints" : "Turn on move hints"}
             className={cn(
-              "h-8 text-xs px-2",
-              showMoveHints ? "text-emerald-400 hover:text-emerald-300" : "text-white/40 hover:text-white/60"
+              "h-10 min-w-[80px] text-xs px-3 font-semibold",
+              "focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
+              showMoveHints ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10" : "text-white/60 hover:text-white hover:bg-white/10"
             )}
             data-testid="toggle-hints"
           >
             {showMoveHints ? "HINTS ON" : "HINTS OFF"}
           </Button>
-          <Button variant="ghost" size="sm" onClick={reset} className="text-white/60 hover:text-white hover:bg-white/10 h-8">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={reset}
+            aria-label="Start a new game"
+            className="h-10 min-w-[80px] text-xs px-3 font-semibold text-white/70 hover:text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          >
             NEW GAME
           </Button>
-        </div>
-      </div>
+        </nav>
+      </header>
 
       {/* AI Turn Indicator */}
       <AnimatePresence>
@@ -158,15 +171,20 @@ export const GameBoard = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="absolute top-28 left-1/2 -translate-x-1/2 z-50 bg-orange-500/90 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg"
+            role="alert"
+            aria-live="assertive"
+            className="absolute top-28 left-1/2 -translate-x-1/2 z-50 bg-orange-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg"
           >
-            🤖 Bot is thinking...
+            <span aria-hidden="true">🤖</span> Bot is thinking...
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Main Game Area */}
-      <div className="flex-1 flex items-center justify-center p-2 md:p-4 overflow-hidden relative">
+      <main 
+        className="flex-1 flex items-center justify-center p-2 md:p-4 overflow-hidden relative"
+        aria-label="Game board with 4 corner piles and 4 main piles"
+      >
         <div className="grid grid-cols-3 grid-rows-3 gap-2 md:gap-6 w-full max-w-[380px] md:max-w-[550px] aspect-square">
           
           {/* Row 1: TL Foundation, Top Tableau, TR Foundation */}
@@ -287,12 +305,20 @@ export const GameBoard = () => {
       </div>
 
       {/* Player Hand */}
-      <div className="h-32 md:h-40 bg-black/40 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-center px-4 pb-[env(safe-area-inset-bottom)] shrink-0">
-        <div className="flex items-center justify-center gap-1 md:gap-2 overflow-x-auto max-w-full py-2">
+      <section 
+        aria-label="Your hand" 
+        className="h-32 md:h-40 bg-black/40 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-center px-4 pb-[env(safe-area-inset-bottom)] shrink-0"
+      >
+        <div 
+          className="flex items-center justify-center gap-1 md:gap-2 overflow-x-auto max-w-full py-2"
+          role="list"
+          aria-label={`Your hand: ${localPlayerHand.length} cards`}
+        >
           <AnimatePresence>
             {localPlayerHand.map((card, idx) => (
               <motion.div 
                 key={card.id}
+                role="listitem"
                 initial={{ opacity: 0, y: 20, scale: 0.8 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -20, scale: 0.8 }}
@@ -313,12 +339,13 @@ export const GameBoard = () => {
         {isMyTurn && !isAITurnInProgress && !winner && (
           <Button 
             onClick={endTurn}
-            className="mt-2 bg-amber-500 hover:bg-amber-600 text-black font-bold px-6 py-2 rounded-full shadow-lg"
+            aria-label="End your turn and draw a card"
+            className="mt-2 min-h-[44px] min-w-[120px] bg-amber-500 hover:bg-amber-600 text-black font-bold px-6 py-3 rounded-full shadow-lg focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           >
             END TURN
           </Button>
         )}
-      </div>
+      </section>
 
       {/* Victory/Game Over Overlay */}
       <AnimatePresence>
@@ -327,28 +354,33 @@ export const GameBoard = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/80 flex items-center justify-center z-50"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="game-result-title"
+            aria-describedby="game-result-description"
+            className="absolute inset-0 bg-black/85 flex items-center justify-center z-50"
           >
             <motion.div 
               initial={{ scale: 0.8, y: 50 }}
               animate={{ scale: 1, y: 0 }}
-              className="text-center p-8 bg-gradient-to-br from-emerald-800 to-emerald-900 rounded-3xl border border-gold/30 shadow-2xl max-w-sm mx-4"
+              className="text-center p-8 bg-gradient-to-br from-emerald-800 to-emerald-900 rounded-3xl border border-amber-400/30 shadow-2xl max-w-sm mx-4"
             >
-              <div className="text-6xl mb-4">{winner === 'player' ? '🏆' : '🤖'}</div>
-              <h2 className="text-3xl font-bold text-gold mb-2">
+              <div className="text-6xl mb-4" aria-hidden="true">{winner === 'player' ? '🏆' : '🤖'}</div>
+              <h2 id="game-result-title" className="text-3xl font-bold text-amber-400 mb-2">
                 {winner === 'player' ? 'You Win!' : 'Bot Wins!'}
               </h2>
-              <p className="text-white/70 mb-6">
+              <p id="game-result-description" className="text-white/80 mb-6">
                 {winner === 'player' 
                   ? 'Congratulations! You cleared all your cards!' 
                   : 'Better luck next time!'}
               </p>
-              <p className="text-white/50 text-sm mb-4">
+              <p className="text-white/60 text-sm mb-4">
                 Completed in {round} rounds
               </p>
               <Button 
                 onClick={reset}
-                className="bg-gold text-black font-bold px-8 py-3 rounded-full hover:bg-gold/90 shadow-lg"
+                aria-label="Play another game"
+                className="min-h-[48px] min-w-[140px] bg-amber-500 text-black font-bold px-8 py-3 rounded-full hover:bg-amber-400 shadow-lg focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               >
                 PLAY AGAIN
               </Button>
