@@ -5,9 +5,16 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import { Apple } from 'lucide-react';
 
+const isNativeApp = () => {
+  return (window as any).Capacitor !== undefined || 
+         navigator.userAgent.includes('Capacitor') ||
+         window.location.protocol === 'capacitor:';
+};
+
 export default function Home() {
   const [_, setLocation] = useLocation();
   const { user, isLoading, isAuthenticated } = useAuth();
+  const isNative = isNativeApp();
 
   if (isLoading) {
     return (
@@ -127,32 +134,35 @@ export default function Home() {
           transition={{ delay: 0.2 }}
           className="flex flex-col gap-4 w-full"
         >
-          <button
-            onClick={() => setLocation('/login')}
-            className="w-full h-12 flex items-center justify-center gap-3 bg-black text-white rounded-lg font-medium text-base hover:bg-black/90 transition-colors shadow-lg border border-white/10"
-            data-testid="button-sign-in-apple"
-          >
-            <Apple className="w-5 h-5" />
-            <span>Continue with Apple</span>
-          </button>
-
-          <div className="flex items-center gap-4 w-full my-2">
-            <div className="h-px bg-white/10 flex-1" />
-            <span className="text-white/30 text-xs">or play without account</span>
-            <div className="h-px bg-white/10 flex-1" />
-          </div>
-
           <Button 
-            variant="outline"
             size="lg" 
-            className="w-full h-14 text-lg border-gold/50 text-gold hover:bg-gold/10 backdrop-blur-sm font-bold"
+            className="w-full h-14 text-lg font-bold bg-gold text-black hover:bg-gold/90 shadow-lg"
             onClick={() => setLocation('/game')}
-            data-testid="button-play-guest"
+            data-testid="button-play-now"
           >
-            PLAY AS GUEST
+            PLAY NOW
           </Button>
+
+          {!isNative && (
+            <>
+              <div className="flex items-center gap-4 w-full my-2">
+                <div className="h-px bg-white/10 flex-1" />
+                <span className="text-white/30 text-xs">or sign in to save progress</span>
+                <div className="h-px bg-white/10 flex-1" />
+              </div>
+
+              <button
+                onClick={() => setLocation('/login')}
+                className="w-full h-12 flex items-center justify-center gap-3 bg-black text-white rounded-lg font-medium text-base hover:bg-black/90 transition-colors shadow-lg border border-white/10"
+                data-testid="button-sign-in-apple"
+              >
+                <Apple className="w-5 h-5" />
+                <span>Sign In with Apple</span>
+              </button>
+            </>
+          )}
           
-          <div className="grid grid-cols-2 gap-4 mt-2">
+          <div className="grid grid-cols-2 gap-4 mt-4">
             <Button 
               variant="ghost" 
               className="w-full text-white/40 hover:text-white border border-white/5 bg-white/5"
