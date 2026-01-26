@@ -10,6 +10,14 @@ export interface Card {
   faceUp: boolean;
 }
 
+export interface Player {
+  id: string;
+  name: string;
+  isAI: boolean;
+  hand: Card[];
+  score: number;
+}
+
 export interface GameState {
   deck: Card[];
   hand: Card[];
@@ -19,10 +27,16 @@ export interface GameState {
   moves: number;
   isWon: boolean;
   seed?: string;
+  
+  players: Player[];
+  currentPlayerIndex: number;
+  round: number;
+  turnPhase: 'playing' | 'drawing' | 'ended';
+  winner: string | null;
 }
 
 export interface MoveAction {
-  type: 'draw' | 'move_card';
+  type: 'draw' | 'move_card' | 'end_turn';
   from?: { type: 'hand' | 'tableau', index: number };
   to?: { type: 'tableau' | 'foundation', index: number };
   cardId?: string;

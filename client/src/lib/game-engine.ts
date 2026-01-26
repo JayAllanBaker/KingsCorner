@@ -10,6 +10,14 @@ export interface Card {
   faceUp: boolean;
 }
 
+export interface Player {
+  id: string;
+  name: string;
+  isAI: boolean;
+  hand: Card[];
+  score: number;
+}
+
 export interface GameState {
   deck: Card[];
   hand: Card[];
@@ -19,10 +27,16 @@ export interface GameState {
   moves: number;
   isWon: boolean;
   seed?: string;
+  
+  players: Player[];
+  currentPlayerIndex: number;
+  round: number;
+  turnPhase: 'playing' | 'drawing' | 'ended';
+  winner: string | null;
 }
 
 export interface MoveAction {
-  type: 'draw' | 'move_card';
+  type: 'draw' | 'move_card' | 'end_turn';
   from?: { type: 'hand' | 'tableau', index: number };
   to?: { type: 'tableau' | 'foundation', index: number };
   cardId?: string;
@@ -77,12 +91,11 @@ export class GameEngine {
     };
   }
 
-  static initializeGame(seed?: string): GameState {
+  static initializeGame(seed?: string, numPlayers: number = 2): GameState {
     const deck = this.createDeck(seed);
     
     const tableau: Card[][] = [[], [], [], []];
     const foundations: Card[][] = [[], [], [], []];
-    const hand: Card[] = [];
     
     for (let i = 0; i < 4; i++) {
       const card = deck.pop()!;
@@ -90,22 +103,42 @@ export class GameEngine {
       tableau[i].push(card);
     }
     
-    for (let i = 0; i < 7; i++) {
-      const card = deck.pop()!;
-      card.faceUp = true;
-      hand.push(card);
+    const players: Player[] = [];
+    for (let i = 0; i < numPlayers; i++) {
+      const hand: Card[] = [];
+      for (let j = 0; j < 7; j++) {
+        const card = deck.pop()!;
+        card.faceUp = true;
+        hand.push(card);
+      }
+      players.push({
+        id: i === 0 ? 'player' : `ai-${i}`,
+        name: i === 0 ? 'You' : `Bot ${i}`,
+        isAI: i !== 0,
+        hand,
+        score: 0,
+      });
     }
     
     return {
       deck,
-      hand,
+      hand: players[0].hand,
       tableau,
       foundations,
       score: 0,
       moves: 0,
       isWon: false,
       seed,
+      players,
+      currentPlayerIndex: 0,
+      round: 1,
+      turnPhase: 'playing',
+      winner: null,
     };
+  }
+
+  static getCurrentPlayer(state: GameState): Player {
+    return state.players[state.currentPlayerIndex];
   }
 
   static isValidFoundationMove(card: Card, topCard?: Card): boolean {
@@ -144,8 +177,44 @@ export class GameEngine {
     return true;
   }
 
+  static checkWinner(state: GameState): string | null {
+    for (const player of state.players) {
+      if (player.hand.length === 0) {
+        return player.id;
+      }
+    }
+    return null;
+  }
+
   static applyMove(state: GameState, action: MoveAction): { valid: boolean; state: GameState; error?: string } {
     const newState = JSON.parse(JSON.stringify(state)) as GameState;
+    const currentPlayer = newState.players[newState.currentPlayerIndex];
+
+    if (action.type === 'end_turn') {
+      if (newState.turnPhase === 'playing') {
+        newState.turnPhase = 'drawing';
+        if (newState.deck.length > 0) {
+          const card = newState.deck.pop()!;
+          card.faceUp = true;
+          currentPlayer.hand.push(card);
+        }
+      }
+      
+      newState.currentPlayerIndex = (newState.currentPlayerIndex + 1) % newState.players.length;
+      if (newState.currentPlayerIndex === 0) {
+        newState.round++;
+      }
+      newState.turnPhase = 'playing';
+      newState.hand = newState.players[newState.currentPlayerIndex].hand;
+      
+      const winner = this.checkWinner(newState);
+      if (winner) {
+        newState.winner = winner;
+        newState.isWon = true;
+      }
+      
+      return { valid: true, state: newState };
+    }
 
     if (action.type === 'draw') {
       if (newState.deck.length === 0) {
@@ -154,7 +223,8 @@ export class GameEngine {
       
       const card = newState.deck.pop()!;
       card.faceUp = true;
-      newState.hand.push(card);
+      currentPlayer.hand.push(card);
+      newState.hand = currentPlayer.hand;
       newState.moves++;
       
       return { valid: true, state: newState };
@@ -168,7 +238,7 @@ export class GameEngine {
 
       let sourceCards: Card[];
       if (from.type === 'hand') {
-        sourceCards = newState.hand;
+        sourceCards = currentPlayer.hand;
       } else {
         sourceCards = newState.tableau[from.index];
       }
@@ -198,28 +268,63 @@ export class GameEngine {
       }
 
       if (from.type === 'hand') {
-        newState.hand.splice(cardIndex, 1);
+        currentPlayer.hand.splice(cardIndex, 1);
         destPile.push(card);
       } else {
         const cardsToMove = sourceCards.splice(cardIndex);
         destPile.push(...cardsToMove);
       }
 
+      newState.hand = currentPlayer.hand;
       newState.moves++;
-      newState.score += 10;
+      currentPlayer.score += 10;
+      newState.score = currentPlayer.score;
 
-      const isWon = newState.hand.length === 0 && 
-                   newState.deck.length === 0 && 
-                   newState.tableau.every(pile => pile.length === 0);
-      
-      if (isWon) {
+      const winner = this.checkWinner(newState);
+      if (winner) {
+        newState.winner = winner;
         newState.isWon = true;
-        newState.score += 100;
       }
 
       return { valid: true, state: newState };
     }
 
     return { valid: false, state, error: 'Unknown action type' };
+  }
+
+  static getAIMove(state: GameState): MoveAction | null {
+    const currentPlayer = state.players[state.currentPlayerIndex];
+    
+    for (const card of currentPlayer.hand) {
+      for (let i = 0; i < 4; i++) {
+        const foundationPile = state.foundations[i];
+        const topCard = foundationPile[foundationPile.length - 1];
+        if (this.isValidFoundationMove(card, topCard)) {
+          return {
+            type: 'move_card',
+            from: { type: 'hand', index: 0 },
+            to: { type: 'foundation', index: i },
+            cardId: card.id,
+          };
+        }
+      }
+    }
+    
+    for (const card of currentPlayer.hand) {
+      for (let i = 0; i < 4; i++) {
+        const tableauPile = state.tableau[i];
+        const topCard = tableauPile[tableauPile.length - 1];
+        if (this.isValidTableauMove(card, topCard)) {
+          return {
+            type: 'move_card',
+            from: { type: 'hand', index: 0 },
+            to: { type: 'tableau', index: i },
+            cardId: card.id,
+          };
+        }
+      }
+    }
+    
+    return { type: 'end_turn' };
   }
 }
