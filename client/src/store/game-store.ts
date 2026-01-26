@@ -15,6 +15,7 @@ interface LocalGameState {
   isGuestMode: boolean;
   isAITurnInProgress: boolean;
   localPlayerId: string;
+  showMoveHints: boolean;
   
   isGameActive: boolean;
   isLoading: boolean;
@@ -30,6 +31,7 @@ interface LocalGameState {
   endTurn: () => Promise<void>;
   reset: () => void;
   getLocalPlayerHand: () => import('@/types/game').Card[];
+  toggleMoveHints: () => void;
 }
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -41,11 +43,16 @@ export const useGameStore = create<LocalGameState>((set, get) => ({
   isGuestMode: false,
   isAITurnInProgress: false,
   localPlayerId: 'player',
+  showMoveHints: true,
   
   isGameActive: false,
   isLoading: false,
   error: null,
   selectedCard: null,
+
+  toggleMoveHints: () => {
+    set((state) => ({ showMoveHints: !state.showMoveHints }));
+  },
 
   getLocalPlayerHand: () => {
     const { state, localPlayerId } = get();

@@ -11,7 +11,8 @@ export const GameBoard = () => {
   const store = useGameStore();
   const { 
     state, selectedCard, selectCard, moveCard, drawCard, endTurn,
-    startSoloGame, reset, isLoading, error, isAITurnInProgress, getLocalPlayerHand
+    startSoloGame, reset, isLoading, error, isAITurnInProgress, getLocalPlayerHand,
+    showMoveHints, toggleMoveHints
   } = store;
 
   useEffect(() => {
@@ -75,6 +76,7 @@ export const GameBoard = () => {
   }, [selectedCard, tableau, foundations, localPlayerHand]);
 
   const isValidTarget = (type: 'tableau' | 'foundation', index: number) => {
+    if (!showMoveHints) return false;
     if (type === 'tableau') return validMoveTargets.tableau.includes(index);
     if (type === 'foundation') return validMoveTargets.foundations.includes(index);
     return false;
@@ -130,9 +132,23 @@ export const GameBoard = () => {
             ))}
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={reset} className="text-white/60 hover:text-white hover:bg-white/10 h-8">
-          NEW GAME
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={toggleMoveHints} 
+            className={cn(
+              "h-8 text-xs px-2",
+              showMoveHints ? "text-emerald-400 hover:text-emerald-300" : "text-white/40 hover:text-white/60"
+            )}
+            data-testid="toggle-hints"
+          >
+            {showMoveHints ? "HINTS ON" : "HINTS OFF"}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={reset} className="text-white/60 hover:text-white hover:bg-white/10 h-8">
+            NEW GAME
+          </Button>
+        </div>
       </div>
 
       {/* AI Turn Indicator */}
