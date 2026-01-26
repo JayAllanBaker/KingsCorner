@@ -64,8 +64,8 @@ export const GameBoard = () => {
 
   return (
     <div className="flex flex-col h-full w-full relative select-none touch-pan-x touch-pan-y-none overscroll-none bg-[#1a3c34]">
-      {/* Header */}
-      <div className="flex justify-between items-center px-4 py-2 text-white/80 text-sm font-mono bg-black/20 backdrop-blur-sm border-b border-white/5 shrink-0 h-12 z-20">
+      {/* Header with safe area */}
+      <div className="flex justify-between items-center px-4 py-2 pt-14 text-white/80 text-sm font-mono bg-black/20 backdrop-blur-sm border-b border-white/5 shrink-0 z-20">
         <div className="flex gap-4">
           <span>SCORE: {score}</span>
           <span>MOVES: {moves}</span>

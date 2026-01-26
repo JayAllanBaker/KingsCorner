@@ -19,8 +19,8 @@ export default function Game() {
   }, [search]);
 
   return (
-    <div className="h-full bg-[#0b1411]">
-      <div className="absolute top-4 left-4 z-50 flex gap-2">
+    <div className="h-full bg-[#0b1411] pt-[env(safe-area-inset-top)]">
+      <div className="absolute top-[calc(env(safe-area-inset-top)+1rem)] left-4 z-50 flex gap-2">
         <Button 
           variant="ghost" 
           size="icon" 
