@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
+import { Apple } from 'lucide-react';
 
 export default function Home() {
   const [_, setLocation] = useLocation();
@@ -18,7 +19,7 @@ export default function Home() {
 
   if (isAuthenticated && user) {
     return (
-      <div className="h-full flex flex-col items-center justify-center relative overflow-hidden">
+      <div className="h-full flex flex-col items-center justify-center relative overflow-hidden pt-[env(safe-area-inset-top)]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-900/40 via-black/60 to-black z-0" />
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-gold/10 rounded-full blur-3xl animate-pulse" />
         <div className="absolute top-20 -left-20 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
@@ -71,13 +72,13 @@ export default function Home() {
                 onClick={() => setLocation('/game?tutorial=true')}
                 data-testid="button-tutorial"
               >
-                Tutorial
+                How to Play
               </Button>
             </div>
 
             <Button 
-              variant="ghost"
-              className="w-full text-white/40 hover:text-white/60 text-sm"
+              variant="ghost" 
+              className="w-full text-white/50 hover:text-white border border-white/10 bg-white/5"
               onClick={() => window.location.href = '/api/logout'}
               data-testid="button-logout"
             >
@@ -98,7 +99,7 @@ export default function Home() {
   }
 
   return (
-    <div className="h-full flex flex-col items-center justify-center relative overflow-hidden">
+    <div className="h-full flex flex-col items-center justify-center relative overflow-hidden pt-[env(safe-area-inset-top)]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-900/40 via-black/60 to-black z-0" />
       <div className="absolute -top-40 -right-40 w-96 h-96 bg-gold/10 rounded-full blur-3xl animate-pulse" />
       <div className="absolute top-20 -left-20 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
@@ -126,32 +127,32 @@ export default function Home() {
           transition={{ delay: 0.2 }}
           className="flex flex-col gap-4 w-full"
         >
-          <Button 
-            size="lg" 
-            className="w-full h-14 text-lg font-bold bg-white text-black hover:bg-white/90 shadow-lg"
+          <button
             onClick={() => window.location.href = '/api/login'}
-            data-testid="button-sign-in"
+            className="w-full h-12 flex items-center justify-center gap-3 bg-black text-white rounded-lg font-medium text-base hover:bg-black/90 transition-colors shadow-lg border border-white/10"
+            data-testid="button-sign-in-apple"
           >
-            SIGN IN
-          </Button>
+            <Apple className="w-5 h-5" />
+            <span>Continue with Apple</span>
+          </button>
 
-          <div className="flex items-center gap-4 w-full">
+          <div className="flex items-center gap-4 w-full my-2">
             <div className="h-px bg-white/10 flex-1" />
-            <span className="text-white/20 text-xs">OR</span>
+            <span className="text-white/30 text-xs">or play without account</span>
             <div className="h-px bg-white/10 flex-1" />
           </div>
 
           <Button 
             variant="outline"
             size="lg" 
-            className="w-full h-14 text-lg border-gold/50 text-gold hover:bg-gold/10 backdrop-blur-sm"
+            className="w-full h-14 text-lg border-gold/50 text-gold hover:bg-gold/10 backdrop-blur-sm font-bold"
             onClick={() => setLocation('/game')}
             data-testid="button-play-guest"
           >
             PLAY AS GUEST
           </Button>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 mt-2">
             <Button 
               variant="ghost" 
               className="w-full text-white/40 hover:text-white border border-white/5 bg-white/5"
@@ -166,13 +167,13 @@ export default function Home() {
               onClick={() => setLocation('/game?tutorial=true')}
               data-testid="button-tutorial-guest"
             >
-              Tutorial
+              How to Play
             </Button>
           </div>
         </motion.div>
       </div>
 
-      <div className="absolute bottom-8 text-center">
+      <div className="absolute bottom-8 text-center pb-[env(safe-area-inset-bottom)]">
         <p className="text-white/20 text-xs font-mono mb-2">v1.0.0 • BETA</p>
         <div className="flex justify-center gap-4">
           <button onClick={() => setLocation('/privacy')} className="text-white/30 hover:text-white/50 text-xs">Privacy</button>
