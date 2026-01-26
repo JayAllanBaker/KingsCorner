@@ -201,7 +201,7 @@ export const EmptyPile = ({ type, onClick, isHighlighted, className }: {
       data-testid={`empty-pile-${type}`}
     >
       {type === 'foundation' && (
-        <span className="text-white/30 text-2xl" aria-hidden="true">♔</span>
+        <span className="text-white/50 text-2xl" aria-hidden="true">♔</span>
       )}
     </motion.div>
   );
@@ -243,7 +243,7 @@ export const DeckPile = ({ count, onClick, className }: {
         whileTap={{ scale: 0.95 }}
         data-testid="deck-empty"
       >
-        <span className="text-white/40 text-xs font-semibold">EMPTY</span>
+        <span className="text-white text-xs font-semibold">EMPTY</span>
       </motion.div>
     );
   }

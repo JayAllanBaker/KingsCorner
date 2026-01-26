@@ -126,7 +126,7 @@ export const GameBoard = () => {
               {currentPlayer.name}'s Turn
             </span>
           </div>
-          <div className="flex gap-3 text-xs text-white/70">
+          <div className="flex gap-3 text-xs text-white">
             <span>Your Cards: {localPlayerHand.length}</span>
             {opponents.map((opp) => (
               <span key={opp.id}>
@@ -144,9 +144,9 @@ export const GameBoard = () => {
             aria-pressed={showMoveHints}
             aria-label={showMoveHints ? "Turn off move hints" : "Turn on move hints"}
             className={cn(
-              "h-10 min-w-[80px] text-xs px-3 font-semibold",
+              "min-h-[44px] min-w-[80px] text-xs px-3 font-semibold",
               "focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
-              showMoveHints ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10" : "text-white/60 hover:text-white hover:bg-white/10"
+              showMoveHints ? "text-emerald-300 hover:text-emerald-200 hover:bg-emerald-400/10" : "text-white hover:text-white hover:bg-white/10"
             )}
             data-testid="toggle-hints"
           >
@@ -157,7 +157,7 @@ export const GameBoard = () => {
             size="sm" 
             onClick={reset}
             aria-label="Start a new game"
-            className="h-10 min-w-[80px] text-xs px-3 font-semibold text-white/70 hover:text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            className="min-h-[44px] min-w-[80px] text-xs px-3 font-semibold text-white hover:text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           >
             NEW GAME
           </Button>
@@ -302,7 +302,7 @@ export const GameBoard = () => {
             </div>
           </div>
         </div>
-      </div>
+      </main>
 
       {/* Player Hand */}
       <section 
