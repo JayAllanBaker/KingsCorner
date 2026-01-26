@@ -12,7 +12,7 @@ export const GameBoard = () => {
   const { 
     state, selectedCard, selectCard, moveCard, drawCard, endTurn,
     startSoloGame, reset, isLoading, error, isAITurnInProgress, getLocalPlayerHand,
-    showMoveHints, toggleMoveHints
+    showMoveHints, toggleMoveHints, undoMove, canUndo
   } = store;
 
   useEffect(() => {
@@ -339,15 +339,32 @@ export const GameBoard = () => {
           </AnimatePresence>
         </div>
         
-        {/* End Turn Button */}
+        {/* Turn Actions */}
         {isMyTurn && !isAITurnInProgress && !winner && (
-          <Button 
-            onClick={endTurn}
-            aria-label="End your turn and draw a card"
-            className="mt-2 min-h-[44px] min-w-[120px] bg-amber-500 hover:bg-amber-600 text-black font-bold px-6 py-3 rounded-full shadow-lg focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-          >
-            END TURN
-          </Button>
+          <div className="mt-2 flex items-center gap-3">
+            <Button 
+              onClick={undoMove}
+              disabled={!canUndo()}
+              aria-label="Undo your last move"
+              className={cn(
+                "min-h-[44px] min-w-[100px] font-bold px-4 py-3 rounded-full shadow-lg focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
+                canUndo() 
+                  ? "bg-white/20 hover:bg-white/30 text-white" 
+                  : "bg-white/10 text-white/40 cursor-not-allowed"
+              )}
+              data-testid="undo-move"
+            >
+              UNDO
+            </Button>
+            <Button 
+              onClick={endTurn}
+              aria-label="End your turn and draw a card"
+              className="min-h-[44px] min-w-[120px] bg-amber-500 hover:bg-amber-600 text-black font-bold px-6 py-3 rounded-full shadow-lg focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              data-testid="end-turn"
+            >
+              END TURN
+            </Button>
+          </div>
         )}
       </section>
 

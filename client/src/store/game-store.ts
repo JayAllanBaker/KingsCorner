@@ -16,6 +16,7 @@ interface LocalGameState {
   isAITurnInProgress: boolean;
   localPlayerId: string;
   showMoveHints: boolean;
+  turnHistory: ServerGameState[];
   
   isGameActive: boolean;
   isLoading: boolean;
@@ -30,6 +31,8 @@ interface LocalGameState {
   moveCard: (source: MoveLocation, destination: MoveLocation, cardId: string) => Promise<boolean>;
   endTurn: () => Promise<void>;
   reset: () => void;
+  undoMove: () => void;
+  canUndo: () => boolean;
   getLocalPlayerHand: () => import('@/types/game').Card[];
   toggleMoveHints: () => void;
 }
@@ -44,6 +47,7 @@ export const useGameStore = create<LocalGameState>((set, get) => ({
   isAITurnInProgress: false,
   localPlayerId: 'player',
   showMoveHints: true,
+  turnHistory: [],
   
   isGameActive: false,
   isLoading: false,
@@ -52,6 +56,24 @@ export const useGameStore = create<LocalGameState>((set, get) => ({
 
   toggleMoveHints: () => {
     set((state) => ({ showMoveHints: !state.showMoveHints }));
+  },
+
+  canUndo: () => {
+    const { turnHistory, isAITurnInProgress, state } = get();
+    if (isAITurnInProgress || !state) return false;
+    if (state.players[state.currentPlayerIndex].isAI) return false;
+    return turnHistory.length > 0;
+  },
+
+  undoMove: () => {
+    const { turnHistory, isAITurnInProgress, state } = get();
+    if (isAITurnInProgress || !state) return;
+    if (state.players[state.currentPlayerIndex].isAI) return;
+    if (turnHistory.length === 0) return;
+    
+    const previousState = turnHistory[turnHistory.length - 1];
+    const newHistory = turnHistory.slice(0, -1);
+    set({ state: previousState, turnHistory: newHistory, selectedCard: null });
   },
 
   getLocalPlayerHand: () => {
@@ -74,6 +96,7 @@ export const useGameStore = create<LocalGameState>((set, get) => ({
       isGuestMode: true,
       selectedCard: null,
       localPlayerId: 'player',
+      turnHistory: [],
     });
   },
 
@@ -88,7 +111,8 @@ export const useGameStore = create<LocalGameState>((set, get) => ({
       isGameActive: true,
       isLoading: false,
       isGuestMode: true,
-      selectedCard: null
+      selectedCard: null,
+      turnHistory: [],
     });
   },
 
@@ -101,6 +125,7 @@ export const useGameStore = create<LocalGameState>((set, get) => ({
       error: null,
       selectedCard: null,
       isAITurnInProgress: false,
+      turnHistory: [],
     });
   },
 
@@ -130,7 +155,7 @@ export const useGameStore = create<LocalGameState>((set, get) => ({
   },
 
   moveCard: async (source, destination, cardId) => {
-    const { state, isAITurnInProgress } = get();
+    const { state, isAITurnInProgress, turnHistory } = get();
     if (!state || isAITurnInProgress) return false;
     if (state.players[state.currentPlayerIndex].isAI) return false;
 
@@ -143,7 +168,8 @@ export const useGameStore = create<LocalGameState>((set, get) => ({
 
     const result = GameEngine.applyMove(state, action);
     if (result.valid) {
-      set({ state: result.state, selectedCard: null });
+      const newHistory = [...turnHistory, JSON.parse(JSON.stringify(state))];
+      set({ state: result.state, selectedCard: null, turnHistory: newHistory });
       return true;
     }
     return false;
@@ -158,7 +184,7 @@ export const useGameStore = create<LocalGameState>((set, get) => ({
     const action: MoveAction = { type: 'end_turn' };
     const result = GameEngine.applyMove(state, action);
     if (result.valid) {
-      set({ state: result.state, selectedCard: null });
+      set({ state: result.state, selectedCard: null, turnHistory: [] });
       
       const runAITurns = async () => {
         let currentState = result.state;
