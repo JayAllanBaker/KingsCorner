@@ -121,7 +121,7 @@ export class GameEngine {
 
   static isValidTableauMove(card: Card, topCard?: Card): boolean {
     if (!topCard) {
-      return card.rank === 'K';
+      return true;
     }
     
     if (card.color === topCard.color) return false;

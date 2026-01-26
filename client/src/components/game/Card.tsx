@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import type { Card as CardType, Suit } from '@/types/game';
 import { cn } from '@/lib/utils';
 import { hapticSelection } from '@/lib/haptics';
-import { Heart, Diamond, Club, Spade } from 'lucide-react';
 
 interface CardProps {
   card: CardType;
@@ -13,13 +12,22 @@ interface CardProps {
   className?: string;
 }
 
-const SuitIcon = ({ suit, className }: { suit: Suit, className?: string }) => {
-  switch (suit) {
-    case 'hearts': return <Heart className={cn("fill-current", className)} />;
-    case 'diamonds': return <Diamond className={cn("fill-current", className)} />;
-    case 'clubs': return <Club className={cn("fill-current", className)} />;
-    case 'spades': return <Spade className={cn("fill-current", className)} />;
-  }
+const SuitSymbol = ({ suit, size = 'md' }: { suit: Suit, size?: 'sm' | 'md' | 'lg' | 'xl' }) => {
+  const symbols: Record<Suit, string> = {
+    hearts: '♥',
+    diamonds: '♦',
+    clubs: '♣',
+    spades: '♠',
+  };
+  
+  const sizes = {
+    sm: 'text-xs',
+    md: 'text-base',
+    lg: 'text-2xl',
+    xl: 'text-4xl',
+  };
+  
+  return <span className={sizes[size]}>{symbols[suit]}</span>;
 };
 
 export const Card = ({ card, isSelected, onClick, style, className }: CardProps) => {
@@ -35,63 +43,156 @@ export const Card = ({ card, isSelected, onClick, style, className }: CardProps)
       layoutId={card.id}
       onClick={handleClick}
       className={cn(
-        "relative rounded-lg bg-white border border-gray-200 select-none cursor-pointer touch-manipulation",
-        "flex flex-col justify-between p-1 md:p-1.5",
-        "card-shadow",
-        isSelected && "ring-4 ring-primary ring-offset-2 ring-offset-[#0b1411] z-10 translate-y-[-8px]",
+        "relative rounded-xl select-none cursor-pointer touch-manipulation overflow-hidden",
+        "flex flex-col justify-between",
+        "bg-gradient-to-br from-white via-gray-50 to-gray-100",
+        "shadow-[0_4px_12px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.1)]",
+        "border border-gray-200/80",
+        isSelected && "ring-3 ring-amber-400 ring-offset-2 ring-offset-[#1a3c34] scale-105 z-20 -translate-y-2",
+        "transition-shadow duration-200",
         className
       )}
       style={style}
-      whileTap={{ scale: 0.95 }}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.97 }}
       data-testid={`card-${card.id}`}
     >
-      {/* Top Left Rank/Suit */}
-      <div className={cn("flex flex-col items-center leading-none", isRed ? "text-red-600" : "text-slate-900")}>
-        <span className="text-sm md:text-base font-bold font-serif tracking-tighter">{card.rank}</span>
-        <SuitIcon suit={card.suit} className="w-2.5 h-2.5 md:w-3.5 md:h-3.5" />
-      </div>
+      {card.faceUp ? (
+        <>
+          <div className="p-1.5 flex flex-col items-start">
+            <span className={cn(
+              "text-lg font-bold leading-none",
+              isRed ? "text-red-500" : "text-slate-800"
+            )}>
+              {card.rank}
+            </span>
+            <span className={cn(
+              "text-sm leading-none",
+              isRed ? "text-red-500" : "text-slate-800"
+            )}>
+              <SuitSymbol suit={card.suit} size="sm" />
+            </span>
+          </div>
 
-      {/* Center Suit */}
-      <div className={cn("absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none", isRed ? "text-red-600" : "text-slate-900")}>
-        <SuitIcon suit={card.suit} className="w-8 h-8 md:w-10 md:h-10" />
-      </div>
+          <div className={cn(
+            "absolute inset-0 flex items-center justify-center pointer-events-none",
+            isRed ? "text-red-500/20" : "text-slate-800/15"
+          )}>
+            <SuitSymbol suit={card.suit} size="xl" />
+          </div>
 
-      {/* Bottom Right Rank/Suit (Rotated) */}
-      <div className={cn("flex flex-col items-center leading-none rotate-180", isRed ? "text-red-600" : "text-slate-900")}>
-        <span className="text-sm md:text-base font-bold font-serif tracking-tighter">{card.rank}</span>
-        <SuitIcon suit={card.suit} className="w-2.5 h-2.5 md:w-3.5 md:h-3.5" />
-      </div>
-      
-      {/* Face Down Overlay */}
-      {!card.faceUp && (
-        <div className="absolute inset-0 bg-emerald-800 rounded-lg border-2 border-white/20 flex items-center justify-center">
-          <div className="w-6 h-6 rounded-full border-2 border-gold opacity-50" />
+          <div className="p-1.5 flex flex-col items-end rotate-180">
+            <span className={cn(
+              "text-lg font-bold leading-none",
+              isRed ? "text-red-500" : "text-slate-800"
+            )}>
+              {card.rank}
+            </span>
+            <span className={cn(
+              "text-sm leading-none",
+              isRed ? "text-red-500" : "text-slate-800"
+            )}>
+              <SuitSymbol suit={card.suit} size="sm" />
+            </span>
+          </div>
+        </>
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-900 rounded-xl flex items-center justify-center">
+          <div className="absolute inset-1 rounded-lg border border-gold/30" />
+          <div className="absolute inset-2 rounded-md border border-gold/20" />
+          <div className="w-8 h-8 rounded-full border-2 border-gold/40 flex items-center justify-center">
+            <span className="text-gold/60 text-lg">♔</span>
+          </div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_30%,rgba(0,0,0,0.3)_100%)]" />
         </div>
       )}
     </motion.div>
   );
 };
 
-export const EmptyPile = ({ type, onClick, isHighlighted, className }: { type: 'foundation' | 'tableau' | 'waste', onClick?: () => void, isHighlighted?: boolean, className?: string }) => {
+export const EmptyPile = ({ type, onClick, isHighlighted, className }: { 
+  type: 'foundation' | 'tableau' | 'waste', 
+  onClick?: () => void, 
+  isHighlighted?: boolean, 
+  className?: string 
+}) => {
   const handleClick = () => {
     hapticSelection();
     onClick?.();
   };
   
   return (
-    <div 
+    <motion.div 
       onClick={handleClick}
       className={cn(
-        "rounded-lg border-2 border-dashed transition-colors",
+        "rounded-xl border-2 border-dashed transition-all duration-200",
         "flex items-center justify-center",
-        isHighlighted ? "border-primary bg-primary/10" : "border-white/10 bg-white/5",
+        isHighlighted 
+          ? "border-amber-400/70 bg-amber-400/10 shadow-[0_0_20px_rgba(251,191,36,0.2)]" 
+          : "border-white/15 bg-white/5",
         "cursor-pointer active:bg-white/10 touch-manipulation",
+        "hover:border-white/25 hover:bg-white/8",
         className
       )}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
       data-testid={`empty-pile-${type}`}
     >
-      {type === 'foundation' && <div className="text-white/20 text-xs uppercase font-bold">K</div>}
-      {type === 'tableau' && <div className="text-white/20 text-xs uppercase font-bold"></div>}
-    </div>
+      {type === 'foundation' && (
+        <span className="text-white/20 text-2xl">♔</span>
+      )}
+    </motion.div>
+  );
+};
+
+export const DeckPile = ({ count, onClick, className }: { 
+  count: number, 
+  onClick?: () => void, 
+  className?: string 
+}) => {
+  const handleClick = () => {
+    hapticSelection();
+    onClick?.();
+  };
+
+  if (count === 0) {
+    return (
+      <motion.div 
+        onClick={handleClick}
+        className={cn(
+          "rounded-xl border-2 border-dashed border-white/15",
+          "flex items-center justify-center bg-white/5",
+          "cursor-pointer",
+          className
+        )}
+        whileTap={{ scale: 0.95 }}
+      >
+        <span className="text-white/30 text-xs">EMPTY</span>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div 
+      onClick={handleClick}
+      className={cn(
+        "relative rounded-xl cursor-pointer touch-manipulation",
+        "bg-gradient-to-br from-red-600 via-red-700 to-red-800",
+        "shadow-[0_4px_12px_rgba(0,0,0,0.3),0_2px_4px_rgba(0,0,0,0.2)]",
+        "border border-red-500/50",
+        "flex items-center justify-center overflow-hidden",
+        className
+      )}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.95 }}
+    >
+      <div className="absolute inset-1 rounded-lg border border-white/20" />
+      <div className="absolute inset-2 rounded-md border border-white/10" />
+      <div className="flex flex-col items-center">
+        <span className="text-white/80 text-2xl">♔</span>
+        <span className="text-white/60 text-xs font-mono">{count}</span>
+      </div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.1)_0%,transparent_60%)]" />
+    </motion.div>
   );
 };

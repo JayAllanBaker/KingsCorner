@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useGameStore } from '@/store/game-store';
-import { Card, EmptyPile } from './Card';
+import { Card, EmptyPile, DeckPile } from './Card';
 import { Button } from '@/components/ui/button';
 import type { Card as CardType } from '@/types/game';
 import { cn } from '@/lib/utils';
@@ -143,18 +143,7 @@ export const GameBoard = () => {
 
           <div className="flex justify-center items-center z-0">
             {/* Deck (Center) */}
-            <div onClick={drawCard} className="relative cursor-pointer group touch-manipulation">
-              {deck.length > 0 ? (
-                <div className="w-16 h-24 md:w-24 md:h-36 bg-red-600 rounded-lg border-2 border-white/20 shadow-xl group-active:scale-95 transition-transform flex items-center justify-center bg-[url('/pattern.png')]">
-                  <div className="w-8 h-12 border-2 border-white/20 rounded opacity-50" />
-                  <span className="absolute -bottom-6 text-[10px] md:text-xs text-white/50 font-mono">{deck.length}</span>
-                </div>
-              ) : (
-                 <div className="w-16 h-24 md:w-24 md:h-36 rounded-lg border-2 border-dashed border-white/10 flex items-center justify-center text-white/20">
-                  ∅
-                </div>
-              )}
-            </div>
+            <DeckPile count={deck.length} onClick={drawCard} className="w-16 h-24 md:w-24 md:h-36" />
           </div>
 
           <div className="flex justify-center items-center overflow-visible z-20">
