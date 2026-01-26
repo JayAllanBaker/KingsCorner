@@ -1,0 +1,423 @@
+## Product Development Specification
+
+## Product Name
+
+Kings Corner Arena
+
+## One Sentence Summary
+
+A modern Kings Corner card game for iOS that delivers three to five minute matches with instant matchmaking, private games with friends, and high replay value through ranked seasons, daily challenges, and clean, accessible design.
+
+## Target Users
+
+1. Casual players who want quick games during short breaks
+2. Competitive players who want ranked progression
+3. Friends and families who want private tables and rematches
+4. Older card players who need readable UI and simple onboarding
+
+## Core Value Proposition
+
+Kings Corner is naturally short and replayable. The gap is a polished modern iOS implementation with excellent onboarding, clean visuals, reliable multiplayer, and fair progression.
+
+---
+
+# 1. Product Goals and Success Metrics
+
+## Goals
+
+1. Fast sessions: average match length under six minutes
+2. Low friction: player in a match in under twenty seconds from app open
+3. Excellent clarity: zero confusion about legal moves
+4. Replay: strong reason to play daily and to come back weekly
+
+## Metrics
+
+1. Day one retention above thirty percent
+2. Day seven retention above twelve percent
+3. Daily challenge completion rate above twenty percent of active users
+4. Multiplayer match completion rate above eighty five percent
+5. Tutorial completion rate above seventy percent
+
+---
+
+# 2. Platform and iOS Requirements
+
+## Supported Devices
+
+iPhone only for v1.0
+iOS 16+
+
+## Apple iOS Features
+
+1. Sign in with Apple (primary identity)
+2. Game Center integration
+
+   * Leaderboards: ranked season and weekly wins
+   * Achievements: tutorial, win streaks, perfect moves, etc
+   * Turn based mode optional for v2.0, not required for v1.0
+3. Push notifications
+
+   * Daily challenge ready
+   * Friend invite received
+   * Ranked season rewards
+4. Haptics for drag and drop interactions
+5. Accessibility
+
+   * Dynamic Type support
+   * High contrast mode support
+   * Color blind safe palette
+   * VoiceOver labels for all tappable elements
+6. Cloud sync using user account backing store so progress persists across devices
+
+---
+
+# 3. Game Rules and Variants
+
+## Standard Rules for v1.0
+
+Kings Corner with these rules:
+
+1. Four foundation piles start empty. Build down in suit from King to Ace.
+2. Tableau columns build down in alternating colors.
+3. Draw pile provides one card at a time to waste.
+4. Player may move single cards or valid descending alternating color sequences between tableau columns.
+5. Empty tableau columns may be filled only by a King or a sequence starting with a King.
+6. Goal is to play all cards from hand and tableau to foundations.
+
+## House Rules Toggles for v1.1
+
+1. Draw one vs draw three
+2. Allow auto move to foundation
+3. Allow hint button
+4. Difficulty: relaxed rules where any card can fill an empty column
+
+---
+
+# 4. Game Modes
+
+## Mode A: Quick Match vs AI
+
+Three difficulty levels: Easy, Standard, Hard
+AI should prioritize legal moves and not require perfect play at launch.
+
+## Mode B: Ranked PvP
+
+Real time matchmaking with ELO like rating.
+Best of one, target match time under six minutes.
+If an opponent disconnects, implement reconnection window then AI takeover to finish.
+
+## Mode C: Friend Match
+
+Invite by:
+
+1. Share link and code
+2. Game Center friend invite
+   Private game lobby with rule toggles.
+
+## Mode D: Daily Challenge
+
+Seeded deal each day.
+Players compete on a score and time leaderboard.
+
+---
+
+# 5. UX Information Architecture
+
+## Primary Screens
+
+1. Onboarding and Sign in
+2. Home
+3. Play Mode Select
+4. Matchmaking and Lobby
+5. Game Table
+6. Results
+7. Profile and Progression
+8. Settings and Accessibility
+
+---
+
+# 6. UX and UI Design Specification
+
+## Visual Style
+
+Modern, clean, high contrast, minimal clutter.
+Avoid clip art. Use vector shapes and subtle gradients sparingly.
+
+## Color System
+
+1. Background: dark green felt gradient or neutral slate
+2. Cards: high contrast white with clear suit icons
+3. Action states
+
+   * Valid drop zone highlight
+   * Invalid drop shake animation
+   * Selected card glow
+
+## Typography
+
+Use iOS system font SF Pro.
+
+1. Headings: bold
+2. Body: regular
+3. Numbers: monospaced for score and timers
+
+## Interaction Model
+
+1. Drag and drop cards with snap zones
+2. Tap to select then tap destination as accessibility alternative
+3. Long press on pile to show allowed moves and rules reminder
+4. Haptics
+
+   * Light on pick up
+   * Success on valid drop
+   * Error on invalid action
+
+## Game Table Layout
+
+Top row:
+
+* Four foundation piles centered
+* Opponent indicator in PvP or AI label in solo
+  Middle:
+* Stock and waste on left
+* Move counter and timer on right
+  Bottom:
+* Seven tableau columns occupying full width
+* Quick actions bar: Undo, Hint optional, Settings, Auto move optional
+
+## Onboarding
+
+Guided tutorial in three minutes:
+
+1. How to build foundations
+2. How to move tableau stacks
+3. How to use empty columns
+4. Win condition
+   Include tooltips and forced first moves.
+
+---
+
+# 7. Game Logic Requirements
+
+## Move Validation
+
+Every move must pass deterministic validation:
+
+1. Source location type: waste, tableau, foundation
+2. Destination type: tableau, foundation
+3. Rules per destination
+4. Stack move validation for sequences
+
+## Auto Move
+
+Optional toggle.
+If enabled, allow an auto button and automatic safe moves:
+Only auto move if it cannot reduce future legal moves.
+Keep it conservative.
+
+## Scoring Model
+
+Score is used for daily challenge and ranked performance display:
+
+1. Base: cards moved to foundations
+2. Speed bonus: remaining time tiers
+3. Move efficiency: fewer moves yield bonus
+4. Penalty for undo usage in competitive modes
+
+---
+
+# 8. Multiplayer Architecture
+
+## v1.0 Multiplayer Approach
+
+Server required for live PvP. Use a managed realtime backend.
+Recommended stack for Replit:
+
+* Node.js + TypeScript backend
+* WebSocket for realtime game state
+* Postgres for persistence
+* Redis optional for matchmaking queue
+
+## Match Model
+
+Kings Corner is turn based but can feel realtime.
+Implement as strictly turn based with a turn timer:
+
+* Each player has fifteen seconds per turn
+* Default action is draw if idle
+
+## Anti Cheating
+
+1. Server authoritative game state
+2. Server validates all moves
+3. Client is a renderer and input collector only
+
+---
+
+# 9. Data Model
+
+## Entities
+
+### User
+
+* id UUID
+* apple_sub string
+* game_center_id string nullable
+* display_name string
+* created_at
+* last_login_at
+
+### Profile
+
+* user_id
+* avatar_id
+* rating int
+* wins int
+* losses int
+* win_streak int
+* best_time_seconds int
+
+### Match
+
+* id UUID
+* mode enum AI RANKED FRIEND DAILY
+* status enum ACTIVE COMPLETE ABANDONED
+* player1_id
+* player2_id nullable
+* seed string
+* start_at end_at
+* result JSON
+* final_state JSON
+
+### DailyChallenge
+
+* date
+* seed
+* rules JSON
+
+### Purchase
+
+Optional if monetization is included later.
+
+---
+
+# 10. Monetization and Compliance
+
+## v1.0 Monetization
+
+Start without pay to win.
+Options:
+
+1. Paid app or no ads
+2. Cosmetic only store later
+3. Optional subscription for advanced stats and themes
+
+## App Store Compliance
+
+1. Privacy policy and data minimization
+2. Sign in with Apple if any third party sign in exists
+3. If using ads, implement ATT prompt responsibly
+4. If any UGC or chat, moderation and reporting is required. Avoid for v1.0.
+
+---
+
+# 11. Technical Implementation Plan for Replit
+
+## Recommended Client Tech
+
+Two viable options:
+Option A: React Native with Expo for fastest iteration
+Option B: Capacitor + React if you already have a web stack
+For iOS native feel, use React Native.
+
+## Recommended Backend
+
+Node.js TypeScript API
+
+* REST endpoints for auth profile daily challenge
+* WebSocket service for matchmaking and live games
+
+## Core Libraries
+
+Client:
+
+* React Native
+* React Navigation
+* Zustand or Redux for state
+* Reanimated for smooth drag animations
+  Backend:
+* ws or Socket.io
+* Prisma ORM
+* Postgres
+* JWT for session tokens
+
+---
+
+# 12. API and Socket Contract
+
+## REST Endpoints
+
+POST /auth/apple
+GET /me
+GET /daily
+POST /match/friend
+POST /match/ranked/join
+GET /leaderboards
+
+## WebSocket Events
+
+client -> server:
+
+* join_queue mode
+* create_friend_lobby rules
+* join_lobby code
+* make_move payload
+* resign
+
+server -> client:
+
+* match_found match_id opponent
+* state_update full_state or patch
+* invalid_move reason
+* match_end result
+
+---
+
+# 13. Definition of Done
+
+## MVP v1.0
+
+1. AI mode playable and stable
+2. Ranked PvP with matchmaking and reconnection
+3. Friend matches with codes
+4. Daily challenge seeded
+5. Clean UI with no overlapping elements
+6. Tutorial and legal move highlighting
+7. Sign in with Apple
+8. Game Center leaderboards and achievements
+9. Crash free session rate above 99 percent
+
+---
+
+# 14. Deliverables Replit Should Produce
+
+1. Replit workspace with client and server folders
+2. Database migrations and seed scripts
+3. Running dev environment and README setup
+4. Automated tests for move validation
+5. Basic CI pipeline script
+6. App Store ready assets placeholders
+
+---
+
+# 15. Build Order
+
+1. Implement deterministic game engine with tests
+2. Build iOS UI table renderer and drag drop
+3. Implement AI opponent
+4. Build auth profile persistence
+5. Add daily challenge
+6. Add multiplayer server authoritative
+7. Add Game Center integrations
+8. Add polish, tutorial, accessibility
+9. QA hardening and App Store prep
