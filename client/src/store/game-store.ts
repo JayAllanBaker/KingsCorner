@@ -14,6 +14,7 @@ interface LocalGameState {
   state: ServerGameState | null;
   isGuestMode: boolean;
   isAITurnInProgress: boolean;
+  localPlayerId: string;
   
   isGameActive: boolean;
   isLoading: boolean;
@@ -28,6 +29,7 @@ interface LocalGameState {
   moveCard: (source: MoveLocation, destination: MoveLocation, cardId: string) => Promise<boolean>;
   endTurn: () => Promise<void>;
   reset: () => void;
+  getLocalPlayerHand: () => import('@/types/game').Card[];
 }
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -38,11 +40,19 @@ export const useGameStore = create<LocalGameState>((set, get) => ({
   state: null,
   isGuestMode: false,
   isAITurnInProgress: false,
+  localPlayerId: 'player',
   
   isGameActive: false,
   isLoading: false,
   error: null,
   selectedCard: null,
+
+  getLocalPlayerHand: () => {
+    const { state, localPlayerId } = get();
+    if (!state) return [];
+    const localPlayer = state.players.find(p => p.id === localPlayerId);
+    return localPlayer?.hand || [];
+  },
 
   startSoloGame: async (difficulty = 'STANDARD', isGuest = false) => {
     set({ isLoading: true, error: null });
@@ -55,7 +65,8 @@ export const useGameStore = create<LocalGameState>((set, get) => ({
       isGameActive: true,
       isLoading: false,
       isGuestMode: true,
-      selectedCard: null
+      selectedCard: null,
+      localPlayerId: 'player',
     });
   },
 

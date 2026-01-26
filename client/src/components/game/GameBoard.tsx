@@ -10,7 +10,7 @@ export const GameBoard = () => {
   const store = useGameStore();
   const { 
     state, selectedCard, selectCard, moveCard, drawCard, endTurn,
-    startSoloGame, reset, isLoading, error, isAITurnInProgress
+    startSoloGame, reset, isLoading, error, isAITurnInProgress, getLocalPlayerHand
   } = store;
 
   useEffect(() => {
@@ -30,9 +30,11 @@ export const GameBoard = () => {
     );
   }
 
-  const { tableau, foundations, deck, hand, score, moves, isWon, players, currentPlayerIndex, round, winner } = state;
+  const { tableau, foundations, deck, score, moves, isWon, players, currentPlayerIndex, round, winner } = state;
   const currentPlayer = players[currentPlayerIndex];
   const isMyTurn = !currentPlayer.isAI;
+  const localPlayerHand = getLocalPlayerHand();
+  const opponents = players.filter(p => p.isAI);
 
   const handleCardClick = async (card: CardType, location: { type: 'tableau' | 'foundation' | 'hand', index: number }) => {
     if (isAITurnInProgress || !isMyTurn) return;
@@ -75,9 +77,13 @@ export const GameBoard = () => {
             </span>
           </div>
           <div className="flex gap-3 text-xs text-white/50">
-            <span>Your Cards: {players[0].hand.length}</span>
-            <span>•</span>
-            <span>Bot Cards: {players[1]?.hand.length || 0}</span>
+            <span>Your Cards: {localPlayerHand.length}</span>
+            {opponents.map((opp, idx) => (
+              <span key={opp.id}>
+                <span className="mx-1">•</span>
+                {opp.name}: {opp.hand.length}
+              </span>
+            ))}
           </div>
         </div>
         <Button variant="ghost" size="sm" onClick={reset} className="text-white/60 hover:text-white hover:bg-white/10 h-8">
@@ -224,7 +230,7 @@ export const GameBoard = () => {
       <div className="h-32 md:h-40 bg-black/40 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-center px-4 pb-[env(safe-area-inset-bottom)] shrink-0">
         <div className="flex items-center justify-center gap-1 md:gap-2 overflow-x-auto max-w-full py-2">
           <AnimatePresence>
-            {hand.map((card, idx) => (
+            {localPlayerHand.map((card, idx) => (
               <motion.div 
                 key={card.id}
                 initial={{ opacity: 0, y: 20, scale: 0.8 }}
