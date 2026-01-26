@@ -21,26 +21,13 @@ export const GameBoard = () => {
     }
   }, []);
 
-  if (!state) {
-    return (
-      <div className="flex items-center justify-center h-full w-full bg-[#1a3c34] text-white">
-        <div className="text-center space-y-4">
-          <div className="text-xl">Loading game...</div>
-          {error && <div className="text-red-400">{error}</div>}
-        </div>
-      </div>
-    );
-  }
-
-  const { tableau, foundations, deck, score, moves, isWon, players, currentPlayerIndex, round, winner } = state;
-  const currentPlayer = players[currentPlayerIndex];
-  const isMyTurn = !currentPlayer.isAI;
-  const localPlayerHand = getLocalPlayerHand();
-  const opponents = players.filter(p => p.isAI);
-
-  // Calculate valid move targets for the selected card
+  // Calculate valid move targets for the selected card (must be before early return to follow hooks rules)
   const validMoveTargets = useMemo(() => {
-    if (!selectedCard) return { tableau: [], foundations: [] };
+    if (!state || !selectedCard) return { tableau: [], foundations: [] };
+    
+    const { tableau, foundations, players, currentPlayerIndex } = state;
+    const localPlayer = players.find(p => !p.isAI);
+    const localPlayerHand = localPlayer ? localPlayer.hand : [];
     
     // Find the selected card
     let card: CardType | undefined;
@@ -73,7 +60,24 @@ export const GameBoard = () => {
     }
     
     return { tableau: validTableau, foundations: validFoundations };
-  }, [selectedCard, tableau, foundations, localPlayerHand]);
+  }, [state, selectedCard]);
+
+  if (!state) {
+    return (
+      <div className="flex items-center justify-center h-full w-full bg-[#1a3c34] text-white">
+        <div className="text-center space-y-4">
+          <div className="text-xl">Loading game...</div>
+          {error && <div className="text-red-400">{error}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  const { tableau, foundations, deck, score, moves, isWon, players, currentPlayerIndex, round, winner } = state;
+  const currentPlayer = players[currentPlayerIndex];
+  const isMyTurn = !currentPlayer.isAI;
+  const localPlayerHand = getLocalPlayerHand();
+  const opponents = players.filter(p => p.isAI);
 
   const isValidTarget = (type: 'tableau' | 'foundation', index: number) => {
     if (!showMoveHints) return false;
