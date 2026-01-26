@@ -86,8 +86,12 @@ export default function Home() {
           </motion.div>
         </div>
 
-        <div className="absolute bottom-8 text-white/20 text-xs font-mono">
-          v1.0.0 • BETA
+        <div className="absolute bottom-8 text-center">
+          <p className="text-white/20 text-xs font-mono mb-2">v1.0.0 • BETA</p>
+          <div className="flex justify-center gap-4">
+            <button onClick={() => setLocation('/privacy')} className="text-white/30 hover:text-white/50 text-xs">Privacy</button>
+            <button onClick={() => setLocation('/support')} className="text-white/30 hover:text-white/50 text-xs">Support</button>
+          </div>
         </div>
       </div>
     );
@@ -168,8 +172,12 @@ export default function Home() {
         </motion.div>
       </div>
 
-      <div className="absolute bottom-8 text-white/20 text-xs font-mono">
-        v1.0.0 • BETA
+      <div className="absolute bottom-8 text-center">
+        <p className="text-white/20 text-xs font-mono mb-2">v1.0.0 • BETA</p>
+        <div className="flex justify-center gap-4">
+          <button onClick={() => setLocation('/privacy')} className="text-white/30 hover:text-white/50 text-xs">Privacy</button>
+          <button onClick={() => setLocation('/support')} className="text-white/30 hover:text-white/50 text-xs">Support</button>
+        </div>
       </div>
     </div>
   );

@@ -3,20 +3,79 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- iOS Web App Configuration -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Kings Corner" />
     <meta name="format-detection" content="telephone=no" />
-
+    <meta name="mobile-web-app-capable" content="yes" />
+    
+    <!-- App Identity -->
     <title>Kings Corner Arena</title>
+    <meta name="application-name" content="Kings Corner Arena" />
+    <meta name="description" content="The ultimate Kings Corner card game. Play against AI, compete in daily challenges, and climb the leaderboards." />
+    
+    <!-- Open Graph -->
     <meta property="og:title" content="Kings Corner Arena" />
     <meta property="og:description" content="The ultimate Kings Corner experience. Play against AI, challenge friends, and climb the ranks." />
     <meta property="og:type" content="website" />
-    <meta name="theme-color" content="#0f1f1a" />
+    <meta property="og:image" content="/icons/icon-512.png" />
     
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Kings Corner Arena" />
+    <meta name="twitter:description" content="The ultimate Kings Corner card game experience." />
+    <meta name="twitter:site" content="@replit" />
+    
+    <!-- Theme Colors -->
+    <meta name="theme-color" content="#0f1f1a" />
+    <meta name="msapplication-TileColor" content="#0f1f1a" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144.png" />
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-167.png" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- iOS Splash Screens -->
+    <link rel="apple-touch-startup-image" href="/splash/splash-center.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-center.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-center.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-center.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-center.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-center.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2)" />
+    <link rel="apple-touch-startup-image" href="/splash/splash-center.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2)" />
+    
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    
+    <!-- iOS-specific styles -->
+    <style>
+      html, body {
+        overscroll-behavior: none;
+        -webkit-overflow-scrolling: touch;
+        touch-action: manipulation;
+      }
+      body {
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      input, textarea {
+        -webkit-user-select: text;
+        user-select: text;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
