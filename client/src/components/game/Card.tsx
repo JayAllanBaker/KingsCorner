@@ -7,6 +7,7 @@ import { hapticSelection } from '@/lib/haptics';
 interface CardProps {
   card: CardType;
   isSelected?: boolean;
+  isHighlighted?: boolean;
   onClick?: () => void;
   style?: React.CSSProperties;
   className?: string;
@@ -30,7 +31,7 @@ const SuitSymbol = ({ suit, size = 'md' }: { suit: Suit, size?: 'sm' | 'md' | 'l
   return <span className={sizes[size]}>{symbols[suit]}</span>;
 };
 
-export const Card = ({ card, isSelected, onClick, style, className }: CardProps) => {
+export const Card = ({ card, isSelected, isHighlighted, onClick, style, className }: CardProps) => {
   const isRed = card.color === 'red';
   
   const handleClick = () => {
@@ -49,6 +50,7 @@ export const Card = ({ card, isSelected, onClick, style, className }: CardProps)
         "shadow-[0_4px_12px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.1)]",
         "border border-gray-200/80",
         isSelected && "ring-3 ring-amber-400 ring-offset-2 ring-offset-[#1a3c34] scale-105 z-20 -translate-y-2",
+        isHighlighted && !isSelected && "ring-2 ring-emerald-400 ring-offset-1 ring-offset-[#1a3c34]",
         "transition-shadow duration-200",
         className
       )}

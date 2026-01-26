@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useGameStore } from '@/store/game-store';
 import { Card, EmptyPile, DeckPile } from './Card';
 import { Button } from '@/components/ui/button';
 import type { Card as CardType } from '@/types/game';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { GameEngine } from '@/lib/game-engine';
 
 export const GameBoard = () => {
   const store = useGameStore();
@@ -35,6 +36,49 @@ export const GameBoard = () => {
   const isMyTurn = !currentPlayer.isAI;
   const localPlayerHand = getLocalPlayerHand();
   const opponents = players.filter(p => p.isAI);
+
+  // Calculate valid move targets for the selected card
+  const validMoveTargets = useMemo(() => {
+    if (!selectedCard) return { tableau: [], foundations: [] };
+    
+    // Find the selected card
+    let card: CardType | undefined;
+    if (selectedCard.location.type === 'hand') {
+      card = localPlayerHand.find(c => c.id === selectedCard.cardId);
+    } else if (selectedCard.location.type === 'tableau') {
+      const pile = tableau[selectedCard.location.index];
+      card = pile.find(c => c.id === selectedCard.cardId);
+    }
+    
+    if (!card) return { tableau: [], foundations: [] };
+    
+    const validTableau: number[] = [];
+    const validFoundations: number[] = [];
+    
+    // Check each tableau pile
+    for (let i = 0; i < 4; i++) {
+      const topCard = tableau[i].length > 0 ? tableau[i][tableau[i].length - 1] : undefined;
+      if (GameEngine.isValidTableauMove(card, topCard)) {
+        validTableau.push(i);
+      }
+    }
+    
+    // Check each foundation pile
+    for (let i = 0; i < 4; i++) {
+      const topCard = foundations[i].length > 0 ? foundations[i][foundations[i].length - 1] : undefined;
+      if (GameEngine.isValidFoundationMove(card, topCard)) {
+        validFoundations.push(i);
+      }
+    }
+    
+    return { tableau: validTableau, foundations: validFoundations };
+  }, [selectedCard, tableau, foundations, localPlayerHand]);
+
+  const isValidTarget = (type: 'tableau' | 'foundation', index: number) => {
+    if (type === 'tableau') return validMoveTargets.tableau.includes(index);
+    if (type === 'foundation') return validMoveTargets.foundations.includes(index);
+    return false;
+  };
 
   const handleCardClick = async (card: CardType, location: { type: 'tableau' | 'foundation' | 'hand', index: number }) => {
     if (isAITurnInProgress || !isMyTurn) return;
@@ -113,9 +157,9 @@ export const GameBoard = () => {
           <div className="flex justify-center items-center">
             <div className="relative w-full h-full flex items-center justify-center">
               {foundations[0].length === 0 ? (
-                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 0 })} isHighlighted={selectedCard ? selectedCard.location.type !== 'foundation' : false} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 0 })} isHighlighted={isValidTarget('foundation', 0)} className="w-14 h-20 md:w-20 md:h-28" />
               ) : (
-                <Card card={foundations[0][foundations[0].length - 1]} onClick={() => handleCardClick(foundations[0][foundations[0].length - 1], { type: 'foundation', index: 0 })} isSelected={selectedCard?.cardId === foundations[0][foundations[0].length - 1].id} className="w-14 h-20 md:w-20 md:h-28" />
+                <Card card={foundations[0][foundations[0].length - 1]} onClick={() => handleCardClick(foundations[0][foundations[0].length - 1], { type: 'foundation', index: 0 })} isSelected={selectedCard?.cardId === foundations[0][foundations[0].length - 1].id} isHighlighted={isValidTarget('foundation', 0)} className="w-14 h-20 md:w-20 md:h-28" />
               )}
             </div>
           </div>
@@ -123,12 +167,12 @@ export const GameBoard = () => {
           <div className="flex justify-center items-center overflow-visible z-10">
             <div className="relative w-full h-full flex justify-center">
               {tableau[0].length === 0 ? (
-                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 0 })} isHighlighted={selectedCard ? selectedCard.location.type !== 'tableau' : false} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 0 })} isHighlighted={isValidTarget('tableau', 0)} className="w-14 h-20 md:w-20 md:h-28" />
               ) : (
                 <div className="relative">
                   {tableau[0].map((card, idx) => (
                     <div key={card.id} style={{ position: 'absolute', top: idx * 16, zIndex: idx }} className="left-1/2 -translate-x-1/2">
-                      <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 0 })} isSelected={selectedCard?.cardId === card.id} className="w-14 h-20 md:w-20 md:h-28" />
+                      <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 0 })} isSelected={selectedCard?.cardId === card.id} isHighlighted={idx === tableau[0].length - 1 && isValidTarget('tableau', 0)} className="w-14 h-20 md:w-20 md:h-28" />
                     </div>
                   ))}
                   <div className="w-14 h-20 md:w-20 md:h-28 opacity-0 pointer-events-none" />
@@ -140,9 +184,9 @@ export const GameBoard = () => {
           <div className="flex justify-center items-center">
             <div className="relative w-full h-full flex items-center justify-center">
               {foundations[1].length === 0 ? (
-                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 1 })} isHighlighted={selectedCard ? selectedCard.location.type !== 'foundation' : false} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 1 })} isHighlighted={isValidTarget('foundation', 1)} className="w-14 h-20 md:w-20 md:h-28" />
               ) : (
-                <Card card={foundations[1][foundations[1].length - 1]} onClick={() => handleCardClick(foundations[1][foundations[1].length - 1], { type: 'foundation', index: 1 })} isSelected={selectedCard?.cardId === foundations[1][foundations[1].length - 1].id} className="w-14 h-20 md:w-20 md:h-28" />
+                <Card card={foundations[1][foundations[1].length - 1]} onClick={() => handleCardClick(foundations[1][foundations[1].length - 1], { type: 'foundation', index: 1 })} isSelected={selectedCard?.cardId === foundations[1][foundations[1].length - 1].id} isHighlighted={isValidTarget('foundation', 1)} className="w-14 h-20 md:w-20 md:h-28" />
               )}
             </div>
           </div>
@@ -151,12 +195,12 @@ export const GameBoard = () => {
           <div className="flex justify-center items-center overflow-visible z-20">
             <div className="relative w-full h-full flex justify-center">
               {tableau[1].length === 0 ? (
-                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 1 })} isHighlighted={selectedCard ? selectedCard.location.type !== 'tableau' : false} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 1 })} isHighlighted={isValidTarget('tableau', 1)} className="w-14 h-20 md:w-20 md:h-28" />
               ) : (
                 <div className="relative">
                   {tableau[1].map((card, idx) => (
                     <div key={card.id} style={{ position: 'absolute', top: idx * 16, zIndex: idx }} className="left-1/2 -translate-x-1/2">
-                      <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 1 })} isSelected={selectedCard?.cardId === card.id} className="w-14 h-20 md:w-20 md:h-28" />
+                      <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 1 })} isSelected={selectedCard?.cardId === card.id} isHighlighted={idx === tableau[1].length - 1 && isValidTarget('tableau', 1)} className="w-14 h-20 md:w-20 md:h-28" />
                     </div>
                   ))}
                   <div className="w-14 h-20 md:w-20 md:h-28 opacity-0 pointer-events-none" />
@@ -172,12 +216,12 @@ export const GameBoard = () => {
           <div className="flex justify-center items-center overflow-visible z-20">
             <div className="relative w-full h-full flex justify-center">
               {tableau[2].length === 0 ? (
-                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 2 })} isHighlighted={selectedCard ? selectedCard.location.type !== 'tableau' : false} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 2 })} isHighlighted={isValidTarget('tableau', 2)} className="w-14 h-20 md:w-20 md:h-28" />
               ) : (
                 <div className="relative">
                   {tableau[2].map((card, idx) => (
                     <div key={card.id} style={{ position: 'absolute', top: idx * 16, zIndex: idx }} className="left-1/2 -translate-x-1/2">
-                      <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 2 })} isSelected={selectedCard?.cardId === card.id} className="w-14 h-20 md:w-20 md:h-28" />
+                      <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 2 })} isSelected={selectedCard?.cardId === card.id} isHighlighted={idx === tableau[2].length - 1 && isValidTarget('tableau', 2)} className="w-14 h-20 md:w-20 md:h-28" />
                     </div>
                   ))}
                   <div className="w-14 h-20 md:w-20 md:h-28 opacity-0 pointer-events-none" />
@@ -190,9 +234,9 @@ export const GameBoard = () => {
           <div className="flex justify-center items-center">
             <div className="relative w-full h-full flex items-center justify-center">
               {foundations[2].length === 0 ? (
-                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 2 })} isHighlighted={selectedCard ? selectedCard.location.type !== 'foundation' : false} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 2 })} isHighlighted={isValidTarget('foundation', 2)} className="w-14 h-20 md:w-20 md:h-28" />
               ) : (
-                <Card card={foundations[2][foundations[2].length - 1]} onClick={() => handleCardClick(foundations[2][foundations[2].length - 1], { type: 'foundation', index: 2 })} isSelected={selectedCard?.cardId === foundations[2][foundations[2].length - 1].id} className="w-14 h-20 md:w-20 md:h-28" />
+                <Card card={foundations[2][foundations[2].length - 1]} onClick={() => handleCardClick(foundations[2][foundations[2].length - 1], { type: 'foundation', index: 2 })} isSelected={selectedCard?.cardId === foundations[2][foundations[2].length - 1].id} isHighlighted={isValidTarget('foundation', 2)} className="w-14 h-20 md:w-20 md:h-28" />
               )}
             </div>
           </div>
@@ -200,12 +244,12 @@ export const GameBoard = () => {
           <div className="flex justify-center items-center overflow-visible z-10">
             <div className="relative w-full h-full flex justify-center">
               {tableau[3].length === 0 ? (
-                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 3 })} isHighlighted={selectedCard ? selectedCard.location.type !== 'tableau' : false} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 3 })} isHighlighted={isValidTarget('tableau', 3)} className="w-14 h-20 md:w-20 md:h-28" />
               ) : (
                 <div className="relative">
                   {tableau[3].map((card, idx) => (
                     <div key={card.id} style={{ position: 'absolute', top: idx * 16, zIndex: idx }} className="left-1/2 -translate-x-1/2">
-                      <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 3 })} isSelected={selectedCard?.cardId === card.id} className="w-14 h-20 md:w-20 md:h-28" />
+                      <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 3 })} isSelected={selectedCard?.cardId === card.id} isHighlighted={idx === tableau[3].length - 1 && isValidTarget('tableau', 3)} className="w-14 h-20 md:w-20 md:h-28" />
                     </div>
                   ))}
                   <div className="w-14 h-20 md:w-20 md:h-28 opacity-0 pointer-events-none" />
@@ -217,9 +261,9 @@ export const GameBoard = () => {
           <div className="flex justify-center items-center">
             <div className="relative w-full h-full flex items-center justify-center">
               {foundations[3].length === 0 ? (
-                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 3 })} isHighlighted={selectedCard ? selectedCard.location.type !== 'foundation' : false} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 3 })} isHighlighted={isValidTarget('foundation', 3)} className="w-14 h-20 md:w-20 md:h-28" />
               ) : (
-                <Card card={foundations[3][foundations[3].length - 1]} onClick={() => handleCardClick(foundations[3][foundations[3].length - 1], { type: 'foundation', index: 3 })} isSelected={selectedCard?.cardId === foundations[3][foundations[3].length - 1].id} className="w-14 h-20 md:w-20 md:h-28" />
+                <Card card={foundations[3][foundations[3].length - 1]} onClick={() => handleCardClick(foundations[3][foundations[3].length - 1], { type: 'foundation', index: 3 })} isSelected={selectedCard?.cardId === foundations[3][foundations[3].length - 1].id} isHighlighted={isValidTarget('foundation', 3)} className="w-14 h-20 md:w-20 md:h-28" />
               )}
             </div>
           </div>
