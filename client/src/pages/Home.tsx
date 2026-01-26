@@ -128,7 +128,7 @@ export default function Home() {
           className="flex flex-col gap-4 w-full"
         >
           <button
-            onClick={() => window.location.href = '/api/login'}
+            onClick={() => setLocation('/login')}
             className="w-full h-12 flex items-center justify-center gap-3 bg-black text-white rounded-lg font-medium text-base hover:bg-black/90 transition-colors shadow-lg border border-white/10"
             data-testid="button-sign-in-apple"
           >

@@ -9,6 +9,7 @@ import Game from "@/pages/Game";
 import Privacy from "@/pages/Privacy";
 import Support from "@/pages/Support";
 import Terms from "@/pages/Terms";
+import Login from "@/pages/Login";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/privacy" component={Privacy} />
       <Route path="/support" component={Support} />
       <Route path="/terms" component={Terms} />
+      <Route path="/login" component={Login} />
       <Route component={NotFound} />
     </Switch>
   );
