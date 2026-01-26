@@ -3,15 +3,15 @@ import { Card, GameEngine, PileType, Rank, RANK_VALUE, Suit } from '@/lib/game-e
 
 interface MoveLocation {
   type: PileType;
-  index: number; // For tableau columns (0-6) or foundations (0-3). Hand/Waste use 0.
+  index: number; // Tableau 0-3 (N, W, E, S) | Foundations 0-3 (NW, NE, SW, SE)
 }
 
 interface GameState {
   deck: Card[];
-  waste: Card[];
+  waste: Card[]; // We might not need waste in strict Kings Corner (usually draw to hand), but keeping for flexibility
   hand: Card[];
-  tableau: Card[][];
-  foundations: Card[][];
+  tableau: Card[][]; // 4 piles: 0:Top, 1:Left, 2:Right, 3:Bottom
+  foundations: Card[][]; // 4 corners: 0:TL, 1:TR, 2:BL, 3:BR
   
   isGameActive: boolean;
   isWon: boolean;
@@ -34,8 +34,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   deck: [],
   waste: [],
   hand: [],
-  tableau: Array(7).fill([]),
-  foundations: Array(4).fill([]),
+  tableau: [[], [], [], []],
+  foundations: [[], [], [], []],
   
   isGameActive: false,
   isWon: false,
@@ -47,30 +47,17 @@ export const useGameStore = create<GameState>((set, get) => ({
   startGame: () => {
     const deck = GameEngine.createDeck();
     
-    // Deal 7 cards to hand (standard Kings Corner usually deals 7)
+    // Deal 7 cards to hand
     const hand = deck.splice(0, 7).map(c => ({...c, faceUp: true}));
     
-    // Deal 1 card to each of 4 tableau columns (Wait, prompt says "Seven tableau columns")
-    // Prompt: "Seven tableau columns occupying full width"
-    // Usually Kings Corner has 4, but user specified 7. I will follow prompt.
-    // Let's deal 1 card to each tableau to start? Or start empty?
-    // Prompt: "Four foundation piles start empty... Tableau columns build down..."
-    // Usually Solitaire starts with cards. Kings Corner often starts with a cross.
-    // "Deal pile provides one card at a time to waste."
-    // Let's assume standard solitaire-style deal but face up? Or empty?
-    // "Standard Rules: ... Empty tableau columns may be filled only by a King"
-    // If they start empty, and you need a King, it's hard to start.
-    // I'll assume a Solitaire-ish deal: 1 card in col 1, 2 in col 2... or just 1 face up in each.
-    // Let's go with 1 face up in each of the 7 columns to be playable.
-    
-    const tableau: Card[][] = [];
-    for (let i = 0; i < 7; i++) {
+    // Deal 1 card to each of 4 tableau piles (Cross pattern)
+    // 0: Top (North), 1: Left (West), 2: Right (East), 3: Bottom (South)
+    const tableau: Card[][] = [[], [], [], []];
+    for (let i = 0; i < 4; i++) {
       const card = deck.pop();
       if (card) {
         card.faceUp = true;
-        tableau.push([card]);
-      } else {
-        tableau.push([]);
+        tableau[i] = [card];
       }
     }
 
@@ -84,7 +71,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       isWon: false,
       score: 0,
       moves: 0,
-      timeElapsed: 0
+      timeElapsed: 0,
+      selectedCard: null
     });
   },
 
@@ -93,7 +81,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   drawCard: () => {
-    const { deck, waste, isGameActive } = get();
+    const { deck, hand, isGameActive } = get();
     if (!isGameActive || deck.length === 0) return;
 
     const newDeck = [...deck];
@@ -103,21 +91,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       card.faceUp = true;
       set({
         deck: newDeck,
-        waste: [...waste, card]
+        hand: [...hand, card] // Kings Corner usually draws to hand, not waste
       });
     }
   },
 
   selectCard: (card, location) => {
-    // If card is already selected, deselect
     const current = get().selectedCard;
     if (current?.card.id === card.id) {
       set({ selectedCard: null });
       return;
     }
-    
-    // Check if we can select this card (must be top of waste/hand or valid sequence in tableau)
-    // For simplicity v1: only allow selecting top card or valid substacks
     set({ selectedCard: { card, location } });
   },
 
@@ -125,22 +109,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get();
     const { tableau, foundations, waste, hand } = state;
 
-    // Helper to get source stack
     let sourceCards: Card[] = [];
-    let sourceStack: Card[] = []; // The full pile where the cards act coming from
     
     if (source.type === 'hand') {
-      sourceStack = hand;
       const index = hand.findIndex(c => c.id === state.selectedCard?.card.id);
       if (index === -1) return false;
-      sourceCards = [hand[index]]; // Can only move 1 from hand usually? Or sequences? Standard is 1.
-    } else if (source.type === 'waste') {
-      sourceStack = waste;
-      if (waste.length === 0) return false;
-      sourceCards = [waste[waste.length - 1]];
+      sourceCards = [hand[index]];
     } else if (source.type === 'tableau') {
-      sourceStack = tableau[source.index];
-      // Find the card in the stack
+      const sourceStack = tableau[source.index];
       const cardIndex = sourceStack.findIndex(c => c.id === state.selectedCard?.card.id);
       if (cardIndex === -1) return false;
       sourceCards = sourceStack.slice(cardIndex);
@@ -148,12 +124,11 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     if (sourceCards.length === 0) return false;
 
-    // Validate Move
     let isValid = false;
     let destPile: Card[] = [];
 
     if (destination.type === 'foundation') {
-      if (sourceCards.length > 1) return false; // Can only move single cards to foundation
+      if (sourceCards.length > 1) return false;
       destPile = foundations[destination.index];
       const topCard = destPile.length > 0 ? destPile[destPile.length - 1] : undefined;
       isValid = GameEngine.isValidFoundationMove(sourceCards[0], topCard);
@@ -161,46 +136,38 @@ export const useGameStore = create<GameState>((set, get) => ({
       destPile = tableau[destination.index];
       const topCard = destPile.length > 0 ? destPile[destPile.length - 1] : undefined;
       
-      // Check validation
       if (GameEngine.isValidTableauMove(sourceCards[0], topCard)) {
-        // Also ensure the source sequence itself is valid (if moving a stack)
         isValid = GameEngine.isValidSequence(sourceCards);
       }
     }
 
     if (isValid) {
-      // Execute Move
-      
-      // Remove from source
       let newHand = [...hand];
-      let newWaste = [...waste];
       let newTableau = [...tableau];
       let newFoundations = [...foundations];
 
       if (source.type === 'hand') {
         newHand = newHand.filter(c => c.id !== sourceCards[0].id);
-      } else if (source.type === 'waste') {
-        newWaste.pop();
       } else if (source.type === 'tableau') {
         newTableau[source.index] = newTableau[source.index].slice(0, newTableau[source.index].length - sourceCards.length);
       }
 
-      // Add to destination
       if (destination.type === 'foundation') {
         newFoundations[destination.index] = [...newFoundations[destination.index], sourceCards[0]];
       } else if (destination.type === 'tableau') {
         newTableau[destination.index] = [...newTableau[destination.index], ...sourceCards];
       }
 
+      const isWon = newHand.length === 0;
+
       set({
         hand: newHand,
-        waste: newWaste,
         tableau: newTableau,
         foundations: newFoundations,
         selectedCard: null,
         moves: state.moves + 1,
-        // Calculate Score (Simple implementation)
-        score: state.score + (destination.type === 'foundation' ? 100 : 0)
+        score: state.score + (destination.type === 'foundation' ? 100 : 0),
+        isWon
       });
       
       return true;
@@ -209,7 +176,5 @@ export const useGameStore = create<GameState>((set, get) => ({
     return false;
   },
 
-  autoMove: () => {
-    // To be implemented: Check all exposed cards and see if they can go to foundations
-  }
+  autoMove: () => {}
 }));
