@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, PanInfo } from 'framer-motion';
 import type { Card as CardType, Suit } from '@/types/game';
 import { cn } from '@/lib/utils';
 import { hapticSelection } from '@/lib/haptics';
@@ -9,6 +9,9 @@ interface CardProps {
   isSelected?: boolean;
   isHighlighted?: boolean;
   onClick?: () => void;
+  onDragStart?: () => void;
+  onDragEnd?: (info: PanInfo) => void;
+  isDraggable?: boolean;
   style?: React.CSSProperties;
   className?: string;
 }
@@ -54,12 +57,16 @@ const SuitSymbol = ({ suit, size = 'md' }: { suit: Suit, size?: 'sm' | 'md' | 'l
   return <span className={sizes[size]} aria-hidden="true">{symbols[suit]}</span>;
 };
 
-export const Card = ({ card, isSelected, isHighlighted, onClick, style, className }: CardProps) => {
+export const Card = ({ card, isSelected, isHighlighted, onClick, onDragStart, onDragEnd, isDraggable = false, style, className }: CardProps) => {
   const isRed = card.color === 'red';
+  const isDragging = React.useRef(false);
   
   const handleClick = () => {
-    hapticSelection();
-    onClick?.();
+    if (!isDragging.current) {
+      hapticSelection();
+      onClick?.();
+    }
+    isDragging.current = false;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -67,6 +74,16 @@ export const Card = ({ card, isSelected, isHighlighted, onClick, style, classNam
       e.preventDefault();
       handleClick();
     }
+  };
+
+  const handleDragStart = () => {
+    isDragging.current = true;
+    hapticSelection();
+    onDragStart?.();
+  };
+
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    onDragEnd?.(info);
   };
 
   const cardLabel = card.faceUp 
@@ -78,26 +95,33 @@ export const Card = ({ card, isSelected, isHighlighted, onClick, style, classNam
       layoutId={card.id}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
+      drag={isDraggable}
+      dragSnapToOrigin={true}
+      dragElastic={0.1}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       tabIndex={0}
       role="button"
       aria-label={cardLabel}
       aria-pressed={isSelected}
       className={cn(
-        "relative rounded-xl select-none cursor-pointer touch-manipulation overflow-hidden",
+        "relative rounded-xl select-none touch-manipulation overflow-hidden",
         "flex flex-col justify-between",
         "bg-gradient-to-br from-white via-gray-50 to-gray-100",
         "shadow-[0_4px_12px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.1)]",
         "border border-gray-200/80",
         "focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
-        isSelected && "ring-4 ring-amber-500 ring-offset-2 ring-offset-[#1a3c34] scale-105 z-20 -translate-y-2",
+        isSelected && "ring-4 ring-amber-500 ring-offset-2 ring-offset-[#1a3c34] scale-110 z-50 shadow-2xl",
         isHighlighted && !isSelected && "ring-3 ring-emerald-500 ring-offset-1 ring-offset-[#1a3c34]",
         "transition-shadow duration-200",
+        isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
         "min-w-[44px] min-h-[44px]",
         className
       )}
       style={style}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.97 }}
+      whileHover={{ scale: isDraggable ? 1.05 : 1.02 }}
+      whileTap={{ scale: isDraggable ? 1.08 : 0.97 }}
+      whileDrag={{ scale: 1.15, zIndex: 100, boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}
       data-testid={`card-${card.id}`}
     >
       {card.faceUp ? (

@@ -1,11 +1,17 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '@/store/game-store';
 import { Card, EmptyPile, DeckPile } from './Card';
 import { Button } from '@/components/ui/button';
 import type { Card as CardType } from '@/types/game';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { GameEngine } from '@/lib/game-engine';
+
+interface DropZone {
+  type: 'tableau' | 'foundation';
+  index: number;
+  element: HTMLDivElement | null;
+}
 
 export const GameBoard = () => {
   const store = useGameStore();
@@ -15,27 +21,37 @@ export const GameBoard = () => {
     showMoveHints, toggleMoveHints, undoMove, canUndo
   } = store;
 
+  const [draggingCard, setDraggingCard] = useState<{card: CardType, location: {type: 'tableau' | 'foundation' | 'hand', index: number}} | null>(null);
+  const dropZoneRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const boardRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!state) {
       startSoloGame();
     }
   }, []);
 
-  // Calculate valid move targets for the selected card (must be before early return to follow hooks rules)
+  // Calculate valid move targets for the selected or dragged card (must be before early return to follow hooks rules)
   const validMoveTargets = useMemo(() => {
-    if (!state || !selectedCard) return { tableau: [], foundations: [] };
+    const activeCard = draggingCard || selectedCard;
+    if (!state || !activeCard) return { tableau: [], foundations: [] };
     
-    const { tableau, foundations, players, currentPlayerIndex } = state;
+    const { tableau, foundations, players } = state;
     const localPlayer = players.find(p => !p.isAI);
     const localPlayerHand = localPlayer ? localPlayer.hand : [];
     
-    // Find the selected card
+    // Find the card
     let card: CardType | undefined;
-    if (selectedCard.location.type === 'hand') {
-      card = localPlayerHand.find(c => c.id === selectedCard.cardId);
-    } else if (selectedCard.location.type === 'tableau') {
-      const pile = tableau[selectedCard.location.index];
-      card = pile.find(c => c.id === selectedCard.cardId);
+    if ('card' in activeCard) {
+      card = activeCard.card;
+    } else if (activeCard.location.type === 'hand') {
+      card = localPlayerHand.find(c => c.id === activeCard.cardId);
+    } else if (activeCard.location.type === 'tableau') {
+      const pile = tableau[activeCard.location.index];
+      card = pile.find(c => c.id === activeCard.cardId);
+    } else if (activeCard.location.type === 'foundation') {
+      const pile = foundations[activeCard.location.index];
+      card = pile.find(c => c.id === activeCard.cardId);
     }
     
     if (!card) return { tableau: [], foundations: [] };
@@ -60,7 +76,7 @@ export const GameBoard = () => {
     }
     
     return { tableau: validTableau, foundations: validFoundations };
-  }, [state, selectedCard]);
+  }, [state, selectedCard, draggingCard]);
 
   if (!state) {
     return (
@@ -108,6 +124,63 @@ export const GameBoard = () => {
     
     if (selectedCard) {
       await moveCard(selectedCard.location, location, selectedCard.cardId);
+    }
+  };
+
+  const handleDragStart = (card: CardType, location: { type: 'tableau' | 'foundation' | 'hand', index: number }) => {
+    setDraggingCard({ card, location });
+    selectCard(card.id, location);
+  };
+
+  const handleDragEnd = async (info: PanInfo) => {
+    if (!draggingCard) {
+      return;
+    }
+    
+    const dropPoint = {
+      x: info.point.x,
+      y: info.point.y
+    };
+
+    let targetFound = false;
+    const { card, location: sourceLocation } = draggingCard;
+    
+    dropZoneRefs.current.forEach((element, key) => {
+      if (!element || targetFound) return;
+      
+      const rect = element.getBoundingClientRect();
+      const padding = 20;
+      if (
+        dropPoint.x >= rect.left - padding &&
+        dropPoint.x <= rect.right + padding &&
+        dropPoint.y >= rect.top - padding &&
+        dropPoint.y <= rect.bottom + padding
+      ) {
+        const [type, indexStr] = key.split('-');
+        const index = parseInt(indexStr);
+        const targetLocation = { type: type as 'tableau' | 'foundation', index };
+        
+        if (type !== sourceLocation.type || index !== sourceLocation.index) {
+          const isValidDrop = type === 'tableau' 
+            ? validMoveTargets.tableau.includes(index)
+            : validMoveTargets.foundations.includes(index);
+          
+          if (isValidDrop) {
+            moveCard(sourceLocation, targetLocation, card.id);
+            targetFound = true;
+          }
+        }
+      }
+    });
+
+    setDraggingCard(null);
+  };
+
+  const registerDropZone = (key: string) => (el: HTMLDivElement | null) => {
+    if (el) {
+      dropZoneRefs.current.set(key, el);
+    } else {
+      dropZoneRefs.current.delete(key);
     }
   };
 
@@ -186,122 +259,255 @@ export const GameBoard = () => {
 
       {/* Main Game Area */}
       <main 
-        className="flex-1 flex items-center justify-center p-2 md:p-4 overflow-hidden relative"
+        ref={boardRef}
+        className="flex-1 flex items-center justify-center p-1 md:p-4 overflow-hidden relative"
         aria-label="Game board with 4 corner piles and 4 main piles"
       >
-        <div className="grid grid-cols-3 grid-rows-3 gap-2 md:gap-6 w-full max-w-[380px] md:max-w-[550px] aspect-square">
+        <div className="grid grid-cols-3 grid-rows-3 gap-1 md:gap-3 w-full max-w-[340px] md:max-w-[500px] aspect-square">
           
-          {/* Row 1: TL Foundation, Top Tableau, TR Foundation */}
-          <div className="flex justify-center items-center">
-            <div className="relative w-full h-full flex items-center justify-center">
+          {/* Row 1: TL Foundation (angled), Top Tableau, TR Foundation (angled) */}
+          <div 
+            ref={registerDropZone('foundation-0')}
+            className={cn(
+              "flex justify-center items-center transition-all duration-200",
+              draggingCard && validMoveTargets.foundations.includes(0) && "ring-2 ring-amber-400 rounded-xl scale-105"
+            )}
+          >
+            <div 
+              className="relative flex items-center justify-center"
+              style={{ transform: 'rotate(-45deg)' }}
+            >
               {foundations[0].length === 0 ? (
-                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 0 })} isHighlighted={isValidTarget('foundation', 0)} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 0 })} isHighlighted={isValidTarget('foundation', 0)} className="w-12 h-[68px] md:w-16 md:h-24" />
               ) : (
-                <Card card={foundations[0][foundations[0].length - 1]} onClick={() => handleCardClick(foundations[0][foundations[0].length - 1], { type: 'foundation', index: 0 })} isSelected={selectedCard?.cardId === foundations[0][foundations[0].length - 1].id} isHighlighted={isValidTarget('foundation', 0)} className="w-14 h-20 md:w-20 md:h-28" />
+                <Card 
+                  card={foundations[0][foundations[0].length - 1]} 
+                  onClick={() => handleCardClick(foundations[0][foundations[0].length - 1], { type: 'foundation', index: 0 })} 
+                  onDragStart={() => handleDragStart(foundations[0][foundations[0].length - 1], { type: 'foundation', index: 0 })}
+                  onDragEnd={handleDragEnd}
+                  isDraggable={isMyTurn && !isAITurnInProgress}
+                  isSelected={selectedCard?.cardId === foundations[0][foundations[0].length - 1].id} 
+                  isHighlighted={isValidTarget('foundation', 0)} 
+                  className="w-12 h-[68px] md:w-16 md:h-24" 
+                />
               )}
             </div>
           </div>
           
-          <div className="flex justify-center items-center overflow-visible z-10">
-            <div className="relative w-full h-full flex justify-center">
+          <div 
+            ref={registerDropZone('tableau-0')}
+            className={cn(
+              "flex justify-center items-start overflow-visible z-10 pt-2",
+              draggingCard && validMoveTargets.tableau.includes(0) && "ring-2 ring-emerald-400 rounded-xl"
+            )}
+          >
+            <div className="relative flex justify-center">
               {tableau[0].length === 0 ? (
-                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 0 })} isHighlighted={isValidTarget('tableau', 0)} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 0 })} isHighlighted={isValidTarget('tableau', 0)} className="w-12 h-[68px] md:w-16 md:h-24" />
               ) : (
                 <div className="relative">
                   {tableau[0].map((card, idx) => (
-                    <div key={card.id} style={{ position: 'absolute', top: idx * 16, zIndex: idx }} className="left-1/2 -translate-x-1/2">
-                      <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 0 })} isSelected={selectedCard?.cardId === card.id} isHighlighted={idx === tableau[0].length - 1 && isValidTarget('tableau', 0)} className="w-14 h-20 md:w-20 md:h-28" />
+                    <div key={card.id} style={{ position: 'absolute', top: idx * 12, zIndex: idx }} className="left-1/2 -translate-x-1/2">
+                      <Card 
+                        card={card} 
+                        onClick={() => handleCardClick(card, { type: 'tableau', index: 0 })} 
+                        onDragStart={() => handleDragStart(card, { type: 'tableau', index: 0 })}
+                        onDragEnd={handleDragEnd}
+                        isDraggable={isMyTurn && !isAITurnInProgress && idx === tableau[0].length - 1}
+                        isSelected={selectedCard?.cardId === card.id} 
+                        isHighlighted={idx === tableau[0].length - 1 && isValidTarget('tableau', 0)} 
+                        className="w-12 h-[68px] md:w-16 md:h-24" 
+                      />
                     </div>
                   ))}
-                  <div className="w-14 h-20 md:w-20 md:h-28 opacity-0 pointer-events-none" />
+                  <div className="w-12 h-[68px] md:w-16 md:h-24 opacity-0 pointer-events-none" />
                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex justify-center items-center">
-            <div className="relative w-full h-full flex items-center justify-center">
+          <div 
+            ref={registerDropZone('foundation-1')}
+            className={cn(
+              "flex justify-center items-center transition-all duration-200",
+              draggingCard && validMoveTargets.foundations.includes(1) && "ring-2 ring-amber-400 rounded-xl scale-105"
+            )}
+          >
+            <div 
+              className="relative flex items-center justify-center"
+              style={{ transform: 'rotate(45deg)' }}
+            >
               {foundations[1].length === 0 ? (
-                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 1 })} isHighlighted={isValidTarget('foundation', 1)} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 1 })} isHighlighted={isValidTarget('foundation', 1)} className="w-12 h-[68px] md:w-16 md:h-24" />
               ) : (
-                <Card card={foundations[1][foundations[1].length - 1]} onClick={() => handleCardClick(foundations[1][foundations[1].length - 1], { type: 'foundation', index: 1 })} isSelected={selectedCard?.cardId === foundations[1][foundations[1].length - 1].id} isHighlighted={isValidTarget('foundation', 1)} className="w-14 h-20 md:w-20 md:h-28" />
+                <Card 
+                  card={foundations[1][foundations[1].length - 1]} 
+                  onClick={() => handleCardClick(foundations[1][foundations[1].length - 1], { type: 'foundation', index: 1 })} 
+                  onDragStart={() => handleDragStart(foundations[1][foundations[1].length - 1], { type: 'foundation', index: 1 })}
+                  onDragEnd={handleDragEnd}
+                  isDraggable={isMyTurn && !isAITurnInProgress}
+                  isSelected={selectedCard?.cardId === foundations[1][foundations[1].length - 1].id} 
+                  isHighlighted={isValidTarget('foundation', 1)} 
+                  className="w-12 h-[68px] md:w-16 md:h-24" 
+                />
               )}
             </div>
           </div>
 
           {/* Row 2: Left Tableau, Deck, Right Tableau */}
-          <div className="flex justify-center items-center overflow-visible z-20">
-            <div className="relative w-full h-full flex justify-center">
+          <div 
+            ref={registerDropZone('tableau-1')}
+            className={cn(
+              "flex justify-center items-center overflow-visible z-20",
+              draggingCard && validMoveTargets.tableau.includes(1) && "ring-2 ring-emerald-400 rounded-xl"
+            )}
+          >
+            <div className="relative flex justify-center">
               {tableau[1].length === 0 ? (
-                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 1 })} isHighlighted={isValidTarget('tableau', 1)} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 1 })} isHighlighted={isValidTarget('tableau', 1)} className="w-12 h-[68px] md:w-16 md:h-24" />
               ) : (
                 <div className="relative">
                   {tableau[1].map((card, idx) => (
-                    <div key={card.id} style={{ position: 'absolute', top: idx * 16, zIndex: idx }} className="left-1/2 -translate-x-1/2">
-                      <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 1 })} isSelected={selectedCard?.cardId === card.id} isHighlighted={idx === tableau[1].length - 1 && isValidTarget('tableau', 1)} className="w-14 h-20 md:w-20 md:h-28" />
+                    <div key={card.id} style={{ position: 'absolute', top: idx * 12, zIndex: idx }} className="left-1/2 -translate-x-1/2">
+                      <Card 
+                        card={card} 
+                        onClick={() => handleCardClick(card, { type: 'tableau', index: 1 })} 
+                        onDragStart={() => handleDragStart(card, { type: 'tableau', index: 1 })}
+                        onDragEnd={handleDragEnd}
+                        isDraggable={isMyTurn && !isAITurnInProgress && idx === tableau[1].length - 1}
+                        isSelected={selectedCard?.cardId === card.id} 
+                        isHighlighted={idx === tableau[1].length - 1 && isValidTarget('tableau', 1)} 
+                        className="w-12 h-[68px] md:w-16 md:h-24" 
+                      />
                     </div>
                   ))}
-                  <div className="w-14 h-20 md:w-20 md:h-28 opacity-0 pointer-events-none" />
+                  <div className="w-12 h-[68px] md:w-16 md:h-24 opacity-0 pointer-events-none" />
                 </div>
               )}
             </div>
           </div>
 
           <div className="flex justify-center items-center z-0">
-            <DeckPile count={deck.length} onClick={isMyTurn && !isAITurnInProgress ? drawCard : undefined} className="w-14 h-20 md:w-20 md:h-28" />
+            <DeckPile count={deck.length} onClick={isMyTurn && !isAITurnInProgress ? drawCard : undefined} className="w-12 h-[68px] md:w-16 md:h-24" />
           </div>
 
-          <div className="flex justify-center items-center overflow-visible z-20">
-            <div className="relative w-full h-full flex justify-center">
+          <div 
+            ref={registerDropZone('tableau-2')}
+            className={cn(
+              "flex justify-center items-center overflow-visible z-20",
+              draggingCard && validMoveTargets.tableau.includes(2) && "ring-2 ring-emerald-400 rounded-xl"
+            )}
+          >
+            <div className="relative flex justify-center">
               {tableau[2].length === 0 ? (
-                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 2 })} isHighlighted={isValidTarget('tableau', 2)} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 2 })} isHighlighted={isValidTarget('tableau', 2)} className="w-12 h-[68px] md:w-16 md:h-24" />
               ) : (
                 <div className="relative">
                   {tableau[2].map((card, idx) => (
-                    <div key={card.id} style={{ position: 'absolute', top: idx * 16, zIndex: idx }} className="left-1/2 -translate-x-1/2">
-                      <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 2 })} isSelected={selectedCard?.cardId === card.id} isHighlighted={idx === tableau[2].length - 1 && isValidTarget('tableau', 2)} className="w-14 h-20 md:w-20 md:h-28" />
+                    <div key={card.id} style={{ position: 'absolute', top: idx * 12, zIndex: idx }} className="left-1/2 -translate-x-1/2">
+                      <Card 
+                        card={card} 
+                        onClick={() => handleCardClick(card, { type: 'tableau', index: 2 })} 
+                        onDragStart={() => handleDragStart(card, { type: 'tableau', index: 2 })}
+                        onDragEnd={handleDragEnd}
+                        isDraggable={isMyTurn && !isAITurnInProgress && idx === tableau[2].length - 1}
+                        isSelected={selectedCard?.cardId === card.id} 
+                        isHighlighted={idx === tableau[2].length - 1 && isValidTarget('tableau', 2)} 
+                        className="w-12 h-[68px] md:w-16 md:h-24" 
+                      />
                     </div>
                   ))}
-                  <div className="w-14 h-20 md:w-20 md:h-28 opacity-0 pointer-events-none" />
+                  <div className="w-12 h-[68px] md:w-16 md:h-24 opacity-0 pointer-events-none" />
                 </div>
               )}
             </div>
           </div>
 
-          {/* Row 3: BL Foundation, Bottom Tableau, BR Foundation */}
-          <div className="flex justify-center items-center">
-            <div className="relative w-full h-full flex items-center justify-center">
+          {/* Row 3: BL Foundation (angled), Bottom Tableau, BR Foundation (angled) */}
+          <div 
+            ref={registerDropZone('foundation-2')}
+            className={cn(
+              "flex justify-center items-center transition-all duration-200",
+              draggingCard && validMoveTargets.foundations.includes(2) && "ring-2 ring-amber-400 rounded-xl scale-105"
+            )}
+          >
+            <div 
+              className="relative flex items-center justify-center"
+              style={{ transform: 'rotate(45deg)' }}
+            >
               {foundations[2].length === 0 ? (
-                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 2 })} isHighlighted={isValidTarget('foundation', 2)} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 2 })} isHighlighted={isValidTarget('foundation', 2)} className="w-12 h-[68px] md:w-16 md:h-24" />
               ) : (
-                <Card card={foundations[2][foundations[2].length - 1]} onClick={() => handleCardClick(foundations[2][foundations[2].length - 1], { type: 'foundation', index: 2 })} isSelected={selectedCard?.cardId === foundations[2][foundations[2].length - 1].id} isHighlighted={isValidTarget('foundation', 2)} className="w-14 h-20 md:w-20 md:h-28" />
+                <Card 
+                  card={foundations[2][foundations[2].length - 1]} 
+                  onClick={() => handleCardClick(foundations[2][foundations[2].length - 1], { type: 'foundation', index: 2 })} 
+                  onDragStart={() => handleDragStart(foundations[2][foundations[2].length - 1], { type: 'foundation', index: 2 })}
+                  onDragEnd={handleDragEnd}
+                  isDraggable={isMyTurn && !isAITurnInProgress}
+                  isSelected={selectedCard?.cardId === foundations[2][foundations[2].length - 1].id} 
+                  isHighlighted={isValidTarget('foundation', 2)} 
+                  className="w-12 h-[68px] md:w-16 md:h-24" 
+                />
               )}
             </div>
           </div>
           
-          <div className="flex justify-center items-center overflow-visible z-10">
-            <div className="relative w-full h-full flex justify-center">
+          <div 
+            ref={registerDropZone('tableau-3')}
+            className={cn(
+              "flex justify-center items-end overflow-visible z-10 pb-2",
+              draggingCard && validMoveTargets.tableau.includes(3) && "ring-2 ring-emerald-400 rounded-xl"
+            )}
+          >
+            <div className="relative flex justify-center">
               {tableau[3].length === 0 ? (
-                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 3 })} isHighlighted={isValidTarget('tableau', 3)} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="tableau" onClick={() => handleEmptyClick({ type: 'tableau', index: 3 })} isHighlighted={isValidTarget('tableau', 3)} className="w-12 h-[68px] md:w-16 md:h-24" />
               ) : (
                 <div className="relative">
                   {tableau[3].map((card, idx) => (
-                    <div key={card.id} style={{ position: 'absolute', top: idx * 16, zIndex: idx }} className="left-1/2 -translate-x-1/2">
-                      <Card card={card} onClick={() => handleCardClick(card, { type: 'tableau', index: 3 })} isSelected={selectedCard?.cardId === card.id} isHighlighted={idx === tableau[3].length - 1 && isValidTarget('tableau', 3)} className="w-14 h-20 md:w-20 md:h-28" />
+                    <div key={card.id} style={{ position: 'absolute', top: idx * 12, zIndex: idx }} className="left-1/2 -translate-x-1/2">
+                      <Card 
+                        card={card} 
+                        onClick={() => handleCardClick(card, { type: 'tableau', index: 3 })} 
+                        onDragStart={() => handleDragStart(card, { type: 'tableau', index: 3 })}
+                        onDragEnd={handleDragEnd}
+                        isDraggable={isMyTurn && !isAITurnInProgress && idx === tableau[3].length - 1}
+                        isSelected={selectedCard?.cardId === card.id} 
+                        isHighlighted={idx === tableau[3].length - 1 && isValidTarget('tableau', 3)} 
+                        className="w-12 h-[68px] md:w-16 md:h-24" 
+                      />
                     </div>
                   ))}
-                  <div className="w-14 h-20 md:w-20 md:h-28 opacity-0 pointer-events-none" />
+                  <div className="w-12 h-[68px] md:w-16 md:h-24 opacity-0 pointer-events-none" />
                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex justify-center items-center">
-            <div className="relative w-full h-full flex items-center justify-center">
+          <div 
+            ref={registerDropZone('foundation-3')}
+            className={cn(
+              "flex justify-center items-center transition-all duration-200",
+              draggingCard && validMoveTargets.foundations.includes(3) && "ring-2 ring-amber-400 rounded-xl scale-105"
+            )}
+          >
+            <div 
+              className="relative flex items-center justify-center"
+              style={{ transform: 'rotate(-45deg)' }}
+            >
               {foundations[3].length === 0 ? (
-                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 3 })} isHighlighted={isValidTarget('foundation', 3)} className="w-14 h-20 md:w-20 md:h-28" />
+                <EmptyPile type="foundation" onClick={() => handleEmptyClick({ type: 'foundation', index: 3 })} isHighlighted={isValidTarget('foundation', 3)} className="w-12 h-[68px] md:w-16 md:h-24" />
               ) : (
-                <Card card={foundations[3][foundations[3].length - 1]} onClick={() => handleCardClick(foundations[3][foundations[3].length - 1], { type: 'foundation', index: 3 })} isSelected={selectedCard?.cardId === foundations[3][foundations[3].length - 1].id} isHighlighted={isValidTarget('foundation', 3)} className="w-14 h-20 md:w-20 md:h-28" />
+                <Card 
+                  card={foundations[3][foundations[3].length - 1]} 
+                  onClick={() => handleCardClick(foundations[3][foundations[3].length - 1], { type: 'foundation', index: 3 })} 
+                  onDragStart={() => handleDragStart(foundations[3][foundations[3].length - 1], { type: 'foundation', index: 3 })}
+                  onDragEnd={handleDragEnd}
+                  isDraggable={isMyTurn && !isAITurnInProgress}
+                  isSelected={selectedCard?.cardId === foundations[3][foundations[3].length - 1].id} 
+                  isHighlighted={isValidTarget('foundation', 3)} 
+                  className="w-12 h-[68px] md:w-16 md:h-24" 
+                />
               )}
             </div>
           </div>
@@ -311,32 +517,50 @@ export const GameBoard = () => {
       {/* Player Hand */}
       <section 
         aria-label="Your hand" 
-        className="min-h-[140px] bg-black/40 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-center px-2 pb-[env(safe-area-inset-bottom)] shrink-0"
+        className="min-h-[120px] bg-black/40 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-center px-2 pb-[env(safe-area-inset-bottom)] shrink-0"
       >
         <div 
-          className="flex items-center justify-center gap-1 overflow-x-auto max-w-full py-1 px-2"
+          className="flex items-end justify-center overflow-x-auto max-w-full py-2 px-3"
           role="list"
           aria-label={`Your hand: ${localPlayerHand.length} cards`}
+          style={{ gap: localPlayerHand.length > 8 ? '-8px' : localPlayerHand.length > 5 ? '2px' : '6px' }}
         >
           <AnimatePresence>
-            {localPlayerHand.map((card, idx) => (
-              <motion.div 
-                key={card.id}
-                role="listitem"
-                initial={{ opacity: 0, y: 20, scale: 0.8 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -20, scale: 0.8 }}
-                transition={{ delay: idx * 0.05 }}
-                className="flex-shrink-0"
-              >
-                <Card 
-                  card={card} 
-                  onClick={() => handleCardClick(card, { type: 'hand', index: idx })} 
-                  isSelected={selectedCard?.cardId === card.id} 
-                  className="w-11 h-[60px] md:w-14 md:h-[76px] hover:scale-105 transition-transform"
-                />
-              </motion.div>
-            ))}
+            {localPlayerHand.map((card, idx) => {
+              const isHovered = false;
+              const fanAngle = localPlayerHand.length > 1 
+                ? ((idx - (localPlayerHand.length - 1) / 2) * (localPlayerHand.length > 8 ? 3 : 5))
+                : 0;
+              
+              return (
+                <motion.div 
+                  key={card.id}
+                  role="listitem"
+                  initial={{ opacity: 0, y: 30, scale: 0.8 }}
+                  animate={{ 
+                    opacity: 1, 
+                    y: selectedCard?.cardId === card.id ? -12 : 0, 
+                    scale: 1,
+                    rotate: fanAngle,
+                    zIndex: selectedCard?.cardId === card.id ? 50 : idx
+                  }}
+                  exit={{ opacity: 0, y: -20, scale: 0.8 }}
+                  transition={{ delay: idx * 0.03, type: 'spring', stiffness: 300, damping: 25 }}
+                  className="flex-shrink-0"
+                  style={{ transformOrigin: 'bottom center' }}
+                >
+                  <Card 
+                    card={card} 
+                    onClick={() => handleCardClick(card, { type: 'hand', index: idx })} 
+                    onDragStart={() => handleDragStart(card, { type: 'hand', index: idx })}
+                    onDragEnd={handleDragEnd}
+                    isDraggable={isMyTurn && !isAITurnInProgress}
+                    isSelected={selectedCard?.cardId === card.id} 
+                    className="w-14 h-[80px] md:w-16 md:h-[92px] hover:-translate-y-3 transition-transform"
+                  />
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         </div>
         
