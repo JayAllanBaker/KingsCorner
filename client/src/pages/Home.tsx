@@ -57,7 +57,7 @@ export default function Home() {
           >
             <Button 
               size="lg" 
-              className="w-full h-14 text-lg font-bold bg-gold text-black hover:bg-gold/90 shadow-lg"
+              className="w-full h-14 text-lg font-bold bg-amber-500 text-black hover:bg-amber-400 shadow-lg"
               onClick={() => setLocation('/game')}
               data-testid="button-play-solo"
             >
