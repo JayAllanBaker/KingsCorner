@@ -4,7 +4,7 @@ import { Card, EmptyPile, DeckPile } from './Card';
 import { Button } from '@/components/ui/button';
 import type { Card as CardType } from '@/types/game';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import { motion, AnimatePresence, PanInfo, LayoutGroup } from 'framer-motion';
 import { GameEngine } from '@/lib/game-engine';
 import { SettingsMenu, SettingsButton } from './SettingsMenu';
 
@@ -139,9 +139,9 @@ export const GameBoard = () => {
     selectCard(card.id, location);
   };
 
-  const handleDragEnd = async (info: PanInfo) => {
+  const handleDragEnd = async (info: PanInfo): Promise<boolean> => {
     if (!draggingCard) {
-      return;
+      return false;
     }
     
     const dropPoint = {
@@ -181,6 +181,7 @@ export const GameBoard = () => {
     });
 
     setDraggingCard(null);
+    return targetFound;
   };
 
   const registerDropZone = (key: string) => (el: HTMLDivElement | null) => {
@@ -192,6 +193,7 @@ export const GameBoard = () => {
   };
 
   return (
+    <LayoutGroup>
     <div 
       className="flex flex-col h-full w-full relative select-none touch-pan-x touch-pan-y-none overscroll-none bg-gradient-to-b from-[#1a3c34] to-[#0f2620]"
       role="application"
@@ -649,5 +651,6 @@ export const GameBoard = () => {
         onHapticsToggle={() => updateSettings({ hapticsEnabled: !settings.hapticsEnabled })}
       />
     </div>
+    </LayoutGroup>
   );
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, PanInfo } from 'framer-motion';
+import { motion, PanInfo, useAnimationControls } from 'framer-motion';
 import type { Card as CardType, Suit } from '@/types/game';
 import { cn } from '@/lib/utils';
 import { hapticSelection } from '@/lib/haptics';
@@ -10,7 +10,7 @@ interface CardProps {
   isHighlighted?: boolean;
   onClick?: () => void;
   onDragStart?: () => void;
-  onDragEnd?: (info: PanInfo) => void;
+  onDragEnd?: (info: PanInfo) => Promise<boolean> | boolean | void;
   isDraggable?: boolean;
   style?: React.CSSProperties;
   className?: string;
@@ -60,6 +60,7 @@ const SuitSymbol = ({ suit, size = 'md' }: { suit: Suit, size?: 'sm' | 'md' | 'l
 export const Card = ({ card, isSelected, isHighlighted, onClick, onDragStart, onDragEnd, isDraggable = false, style, className }: CardProps) => {
   const isRed = card.color === 'red';
   const isDragging = React.useRef(false);
+  const controls = useAnimationControls();
   
   const handleClick = () => {
     if (!isDragging.current) {
@@ -82,8 +83,11 @@ export const Card = ({ card, isSelected, isHighlighted, onClick, onDragStart, on
     onDragStart?.();
   };
 
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    onDragEnd?.(info);
+  const handleDragEnd = async (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const result = await onDragEnd?.(info);
+    if (result === false) {
+      controls.start({ x: 0, y: 0, transition: { type: 'spring', stiffness: 500, damping: 30 } });
+    }
   };
 
   const cardLabel = card.faceUp 
@@ -93,11 +97,14 @@ export const Card = ({ card, isSelected, isHighlighted, onClick, onDragStart, on
   return (
     <motion.div
       layoutId={card.id}
+      layout="position"
+      animate={controls}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       drag={isDraggable}
-      dragSnapToOrigin={true}
-      dragElastic={0.1}
+      dragSnapToOrigin={false}
+      dragElastic={0.2}
+      dragMomentum={false}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       tabIndex={0}
@@ -119,6 +126,7 @@ export const Card = ({ card, isSelected, isHighlighted, onClick, onDragStart, on
         className
       )}
       style={style}
+      transition={{ layout: { type: "spring", stiffness: 350, damping: 25 } }}
       whileHover={{ scale: isDraggable ? 1.05 : 1.02 }}
       whileTap={{ scale: isDraggable ? 1.08 : 0.97 }}
       whileDrag={{ scale: 1.15, zIndex: 100, boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}
