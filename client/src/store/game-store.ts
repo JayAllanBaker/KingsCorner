@@ -8,6 +8,13 @@ interface MoveLocation {
   index: number;
 }
 
+interface GameSettings {
+  difficulty: 'easy' | 'standard' | 'hard';
+  playerName: string;
+  soundEnabled: boolean;
+  hapticsEnabled: boolean;
+}
+
 interface LocalGameState {
   gameId: string | null;
   matchId: string | null;
@@ -17,6 +24,7 @@ interface LocalGameState {
   localPlayerId: string;
   showMoveHints: boolean;
   turnHistory: ServerGameState[];
+  settings: GameSettings;
   
   isGameActive: boolean;
   isLoading: boolean;
@@ -35,9 +43,27 @@ interface LocalGameState {
   canUndo: () => boolean;
   getLocalPlayerHand: () => import('@/types/game').Card[];
   toggleMoveHints: () => void;
+  updateSettings: (settings: Partial<GameSettings>) => void;
 }
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const loadSettings = (): GameSettings => {
+  try {
+    const saved = localStorage.getItem('kingsCornerSettings');
+    if (saved) {
+      return { ...defaultSettings, ...JSON.parse(saved) };
+    }
+  } catch {}
+  return defaultSettings;
+};
+
+const defaultSettings: GameSettings = {
+  difficulty: 'standard',
+  playerName: 'Player',
+  soundEnabled: true,
+  hapticsEnabled: true,
+};
 
 export const useGameStore = create<LocalGameState>((set, get) => ({
   gameId: null,
@@ -48,11 +74,22 @@ export const useGameStore = create<LocalGameState>((set, get) => ({
   localPlayerId: 'player',
   showMoveHints: true,
   turnHistory: [],
+  settings: loadSettings(),
   
   isGameActive: false,
   isLoading: false,
   error: null,
   selectedCard: null,
+
+  updateSettings: (newSettings) => {
+    set((state) => {
+      const updated = { ...state.settings, ...newSettings };
+      try {
+        localStorage.setItem('kingsCornerSettings', JSON.stringify(updated));
+      } catch {}
+      return { settings: updated };
+    });
+  },
 
   toggleMoveHints: () => {
     set((state) => ({ showMoveHints: !state.showMoveHints }));
@@ -83,10 +120,20 @@ export const useGameStore = create<LocalGameState>((set, get) => ({
     return localPlayer?.hand || [];
   },
 
-  startSoloGame: async (difficulty = 'STANDARD', isGuest = false) => {
+  startSoloGame: async (difficulty?: 'EASY' | 'STANDARD' | 'HARD', isGuest = false) => {
     set({ isLoading: true, error: null });
     
+    const { settings } = get();
+    const difficultyToUse = difficulty || settings.difficulty.toUpperCase() as 'EASY' | 'STANDARD' | 'HARD';
+    
     const gameState = GameEngine.initializeGame(undefined, 2);
+    
+    if (gameState.players[1]) {
+      gameState.players[1].aiDifficulty = difficultyToUse;
+      const difficultyNames = { EASY: 'Easy Bot', STANDARD: 'Bot', HARD: 'Master Bot' };
+      gameState.players[1].name = difficultyNames[difficultyToUse];
+    }
+    
     set({
       gameId: `guest-${Date.now()}`,
       matchId: null,
@@ -117,7 +164,17 @@ export const useGameStore = create<LocalGameState>((set, get) => ({
   },
 
   reset: () => {
+    const { settings } = get();
+    const difficulty = settings.difficulty.toUpperCase() as 'EASY' | 'STANDARD' | 'HARD';
+    
     const gameState = GameEngine.initializeGame(undefined, 2);
+    
+    if (gameState.players[1]) {
+      gameState.players[1].aiDifficulty = difficulty;
+      const difficultyNames = { EASY: 'Easy Bot', STANDARD: 'Bot', HARD: 'Master Bot' };
+      gameState.players[1].name = difficultyNames[difficulty];
+    }
+    
     set({
       gameId: `guest-${Date.now()}`,
       state: gameState,

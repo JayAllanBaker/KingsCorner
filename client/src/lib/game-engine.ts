@@ -16,6 +16,7 @@ export interface Player {
   isAI: boolean;
   hand: Card[];
   score: number;
+  aiDifficulty?: 'EASY' | 'STANDARD' | 'HARD';
 }
 
 export interface GameState {
@@ -303,18 +304,21 @@ export class GameEngine {
 
   static getAIMove(state: GameState): MoveAction | null {
     const currentPlayer = state.players[state.currentPlayerIndex];
+    const difficulty = currentPlayer.aiDifficulty || 'STANDARD';
+    
+    const allMoves: MoveAction[] = [];
     
     for (const card of currentPlayer.hand) {
       for (let i = 0; i < 4; i++) {
         const foundationPile = state.foundations[i];
         const topCard = foundationPile[foundationPile.length - 1];
         if (this.isValidFoundationMove(card, topCard)) {
-          return {
+          allMoves.push({
             type: 'move_card',
             from: { type: 'hand', index: 0 },
             to: { type: 'foundation', index: i },
             cardId: card.id,
-          };
+          });
         }
       }
     }
@@ -324,16 +328,42 @@ export class GameEngine {
         const tableauPile = state.tableau[i];
         const topCard = tableauPile[tableauPile.length - 1];
         if (this.isValidTableauMove(card, topCard)) {
-          return {
+          allMoves.push({
             type: 'move_card',
             from: { type: 'hand', index: 0 },
             to: { type: 'tableau', index: i },
             cardId: card.id,
-          };
+          });
         }
       }
     }
     
-    return { type: 'end_turn' };
+    if (allMoves.length === 0) {
+      return { type: 'end_turn' };
+    }
+    
+    if (difficulty === 'EASY') {
+      if (Math.random() < 0.4) {
+        return { type: 'end_turn' };
+      }
+      return allMoves[Math.floor(Math.random() * allMoves.length)];
+    }
+    
+    if (difficulty === 'HARD') {
+      const foundationMoves = allMoves.filter(m => m.to?.type === 'foundation');
+      if (foundationMoves.length > 0) {
+        return foundationMoves[0];
+      }
+      const kingMoves = allMoves.filter(m => {
+        const card = currentPlayer.hand.find(c => c.id === m.cardId);
+        return card?.rank === 'K';
+      });
+      if (kingMoves.length > 0) {
+        return kingMoves[0];
+      }
+      return allMoves[0];
+    }
+    
+    return allMoves[0];
   }
 }

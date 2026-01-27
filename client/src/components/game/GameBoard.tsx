@@ -6,6 +6,7 @@ import type { Card as CardType } from '@/types/game';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { GameEngine } from '@/lib/game-engine';
+import { SettingsMenu, SettingsButton } from './SettingsMenu';
 
 interface DropZone {
   type: 'tableau' | 'foundation';
@@ -18,12 +19,18 @@ export const GameBoard = () => {
   const { 
     state, selectedCard, selectCard, moveCard, drawCard, endTurn,
     startSoloGame, reset, isLoading, error, isAITurnInProgress, getLocalPlayerHand,
-    showMoveHints, toggleMoveHints, undoMove, canUndo
+    showMoveHints, toggleMoveHints, undoMove, canUndo, settings, updateSettings
   } = store;
 
   const [draggingCard, setDraggingCard] = useState<{card: CardType, location: {type: 'tableau' | 'foundation' | 'hand', index: number}} | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const dropZoneRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const boardRef = useRef<HTMLDivElement>(null);
+
+  const handleNewGame = () => {
+    const difficultyMap = { easy: 'EASY', standard: 'STANDARD', hard: 'HARD' } as const;
+    startSoloGame(difficultyMap[settings.difficulty], true);
+  };
 
   useEffect(() => {
     if (!state) {
@@ -221,23 +228,15 @@ export const GameBoard = () => {
             aria-pressed={showMoveHints}
             aria-label={showMoveHints ? "Turn off move hints" : "Turn on move hints"}
             className={cn(
-              "min-h-[44px] min-w-[80px] text-xs px-3 font-semibold",
+              "min-h-[40px] min-w-[70px] text-xs px-2 font-semibold",
               "focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
               showMoveHints ? "text-emerald-300 hover:text-emerald-200 hover:bg-emerald-400/10" : "text-white hover:text-white hover:bg-white/10"
             )}
             data-testid="toggle-hints"
           >
-            {showMoveHints ? "HINTS ON" : "HINTS OFF"}
+            {showMoveHints ? "HINTS" : "HINTS"}
           </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={reset}
-            aria-label="Start a new game"
-            className="min-h-[44px] min-w-[80px] text-xs px-3 font-semibold text-white hover:text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-          >
-            NEW GAME
-          </Button>
+          <SettingsButton onClick={() => setSettingsOpen(true)} />
         </nav>
       </header>
 
@@ -634,6 +633,21 @@ export const GameBoard = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Settings Menu */}
+      <SettingsMenu
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onNewGame={handleNewGame}
+        difficulty={settings.difficulty}
+        onDifficultyChange={(diff) => updateSettings({ difficulty: diff })}
+        playerName={settings.playerName}
+        onPlayerNameChange={(name) => updateSettings({ playerName: name })}
+        soundEnabled={settings.soundEnabled}
+        onSoundToggle={() => updateSettings({ soundEnabled: !settings.soundEnabled })}
+        hapticsEnabled={settings.hapticsEnabled}
+        onHapticsToggle={() => updateSettings({ hapticsEnabled: !settings.hapticsEnabled })}
+      />
     </div>
   );
 };

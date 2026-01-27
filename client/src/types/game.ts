@@ -16,6 +16,7 @@ export interface Player {
   isAI: boolean;
   hand: Card[];
   score: number;
+  aiDifficulty?: 'EASY' | 'STANDARD' | 'HARD';
 }
 
 export interface GameState {
