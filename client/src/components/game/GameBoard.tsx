@@ -118,7 +118,7 @@ export const GameBoard = () => {
       aria-label="Kings Corner card game"
     >
       {/* Header with turn info */}
-      <header className="flex justify-between items-center px-4 py-2 pt-14 text-white text-sm font-mono bg-black/30 backdrop-blur-sm border-b border-white/10 shrink-0 z-20">
+      <header className="flex justify-between items-center px-3 py-2 pt-[env(safe-area-inset-top)] text-white text-sm font-mono bg-black/30 backdrop-blur-sm border-b border-white/10 shrink-0 z-20">
         <div className="flex flex-col" role="status" aria-live="polite">
           <div className="flex gap-3 items-center">
             <span className="text-amber-400 font-bold">Round {round}</span>
@@ -311,10 +311,10 @@ export const GameBoard = () => {
       {/* Player Hand */}
       <section 
         aria-label="Your hand" 
-        className="h-32 md:h-40 bg-black/40 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-center px-4 pb-[env(safe-area-inset-bottom)] shrink-0"
+        className="min-h-[140px] bg-black/40 backdrop-blur-md border-t border-white/10 flex flex-col items-center justify-center px-2 pb-[env(safe-area-inset-bottom)] shrink-0"
       >
         <div 
-          className="flex items-center justify-center gap-1 md:gap-2 overflow-x-auto max-w-full py-2"
+          className="flex items-center justify-center gap-1 overflow-x-auto max-w-full py-1 px-2"
           role="list"
           aria-label={`Your hand: ${localPlayerHand.length} cards`}
         >
@@ -327,12 +327,13 @@ export const GameBoard = () => {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -20, scale: 0.8 }}
                 transition={{ delay: idx * 0.05 }}
+                className="flex-shrink-0"
               >
                 <Card 
                   card={card} 
                   onClick={() => handleCardClick(card, { type: 'hand', index: idx })} 
                   isSelected={selectedCard?.cardId === card.id} 
-                  className="w-12 h-16 md:w-16 md:h-22 hover:scale-105 transition-transform"
+                  className="w-11 h-[60px] md:w-14 md:h-[76px] hover:scale-105 transition-transform"
                 />
               </motion.div>
             ))}
@@ -341,13 +342,13 @@ export const GameBoard = () => {
         
         {/* Turn Actions */}
         {isMyTurn && !isAITurnInProgress && !winner && (
-          <div className="mt-2 flex items-center gap-3">
+          <div className="mt-1 flex items-center gap-2">
             <Button 
               onClick={undoMove}
               disabled={!canUndo()}
               aria-label="Undo your last move"
               className={cn(
-                "min-h-[44px] min-w-[100px] font-bold px-4 py-3 rounded-full shadow-lg focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
+                "min-h-[40px] min-w-[80px] text-sm font-bold px-3 py-2 rounded-full shadow-lg focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
                 canUndo() 
                   ? "bg-white/20 hover:bg-white/30 text-white" 
                   : "bg-white/10 text-white/40 cursor-not-allowed"
@@ -359,7 +360,7 @@ export const GameBoard = () => {
             <Button 
               onClick={endTurn}
               aria-label="End your turn and draw a card"
-              className="min-h-[44px] min-w-[120px] bg-amber-500 hover:bg-amber-600 text-black font-bold px-6 py-3 rounded-full shadow-lg focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              className="min-h-[40px] min-w-[100px] bg-amber-500 hover:bg-amber-600 text-black text-sm font-bold px-4 py-2 rounded-full shadow-lg focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               data-testid="end-turn"
             >
               END TURN
